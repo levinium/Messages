@@ -59,6 +59,7 @@ import org.fossify.messages.helpers.MESSAGES_LIMIT
 import org.fossify.messages.helpers.MessagingCache
 import org.fossify.messages.helpers.NotificationHelper
 import org.fossify.messages.helpers.ShortcutHelper
+import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.helpers.generateRandomId
 import org.fossify.messages.interfaces.AttachmentsDao
 import org.fossify.messages.interfaces.ConversationsDao
@@ -1068,6 +1069,21 @@ fun Context.showReceivedMessageNotification(
     threadId: Long,
     bitmap: Bitmap?,
 ) {
+    // the message is already on screen, notifying about it would only give the user something to
+    // dismiss. The alert is still played so the arrival doesn't go unnoticed, and the conversation
+    // shortcut is still kept up to date, which normally happens as a side effect of notifying.
+    if (VisibleScreenTracker.isThreadShowingNewMessages(threadId)) {
+        val helper = shortcutHelper
+        notificationHelper.playMessageAlert(threadId)
+        ensureBackgroundThread {
+            if (helper.getShortcut(threadId) == null) {
+                helper.createOrUpdateShortcut(threadId)
+            }
+            helper.reportReceiveMessageUsage(threadId)
+        }
+        return
+    }
+
     Handler(Looper.getMainLooper()).post {
         notificationHelper.showMessageNotification(
             messageId = messageId,

@@ -4,13 +4,19 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager.IMPORTANCE_HIGH
+import android.app.NotificationManager.IMPORTANCE_NONE
+import android.app.NotificationManager.INTERRUPTION_FILTER_ALL
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.Ringtone
 import android.media.RingtoneManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
@@ -18,6 +24,7 @@ import org.fossify.commons.extensions.getProperPrimaryColor
 import org.fossify.commons.extensions.notificationManager
 import org.fossify.commons.helpers.SimpleContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
+import org.fossify.commons.helpers.isSPlus
 import org.fossify.messages.R
 import org.fossify.messages.activities.ThreadActivity
 import org.fossify.messages.extensions.config
@@ -35,6 +42,12 @@ class NotificationHelper(private val context: Context) {
         .setName(context.getString(R.string.me))
         .build()
 
+    private val notificationAudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
+        .build()
+
     @SuppressLint("NewApi")
     fun showMessageNotification(
         messageId: Long,
@@ -46,14 +59,7 @@ class NotificationHelper(private val context: Context) {
         sender: String?,
         alertOnlyOnce: Boolean = false
     ) {
-        val hasCustomNotifications =
-            context.config.customNotifications.contains(threadId.toString())
-        val notificationChannelId =
-            if (hasCustomNotifications) threadId.toString() else NOTIFICATION_CHANNEL_ID
-        if (!hasCustomNotifications) {
-            createChannel(notificationChannelId, context.getString(R.string.channel_received_sms))
-        }
-
+        val notificationChannelId = getOrCreateMessageChannelId(threadId)
         val notificationId = threadId.hashCode()
         val contentIntent = Intent(context, ThreadActivity::class.java).apply {
             putExtra(THREAD_ID, threadId)
@@ -229,18 +235,99 @@ class NotificationHelper(private val context: Context) {
         notificationManager.notify(notificationId, builder.build())
     }
 
-    private fun createChannel(id: String, name: String) {
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
-            .build()
+    /**
+     * Plays the alert the notification would have played, for messages that arrive while the user
+     * is already looking at them. Honors Do Not Disturb, the ringer mode and the channel's own
+     * sound and vibration settings, so a silenced conversation stays silent.
+     */
+    @SuppressLint("NewApi")
+    fun playMessageAlert(threadId: Long) {
+        if (!notificationManager.areNotificationsEnabled()) {
+            return
+        }
 
+        if (notificationManager.currentInterruptionFilter != INTERRUPTION_FILTER_ALL) {
+            return
+        }
+
+        val channelId = getOrCreateMessageChannelId(threadId)
+        val channel = notificationManager.getNotificationChannel(channelId) ?: return
+        if (channel.importance == IMPORTANCE_NONE) {
+            return
+        }
+
+        when (context.getSystemService(AudioManager::class.java)?.ringerMode) {
+            AudioManager.RINGER_MODE_SILENT -> return
+            AudioManager.RINGER_MODE_VIBRATE -> vibrate(channel)
+            else -> {
+                playAlertSound(channel)
+                if (channel.shouldVibrate()) {
+                    vibrate(channel)
+                }
+            }
+        }
+    }
+
+    private fun playAlertSound(channel: NotificationChannel) {
+        val alertUri = channel.sound ?: return
+        try {
+            val ringtone =
+                RingtoneManager.getRingtone(context.applicationContext, alertUri) ?: return
+            ringtone.audioAttributes = channel.audioAttributes ?: notificationAudioAttributes
+
+            // a Ringtone that gets collected mid playback goes silent, so hold on to the last one
+            currentAlert?.takeIf { it.isPlaying }?.stop()
+            currentAlert = ringtone
+            ringtone.play()
+        } catch (_: Exception) {
+            // a missing or unplayable ringtone is not worth bothering the user about
+        }
+    }
+
+    private fun vibrate(channel: NotificationChannel) {
+        val vibrator = if (isSPlus()) {
+            context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Vibrator::class.java)
+        }
+
+        if (vibrator?.hasVibrator() != true) {
+            return
+        }
+
+        val pattern = channel.vibrationPattern
+        val effect = if (pattern != null && pattern.isNotEmpty()) {
+            VibrationEffect.createWaveform(pattern, -1)
+        } else {
+            VibrationEffect.createOneShot(ALERT_VIBRATION_MS, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
+
+        try {
+            vibrator.vibrate(effect, notificationAudioAttributes)
+        } catch (_: Exception) {
+            // some devices refuse to vibrate while in a call or similar
+        }
+    }
+
+    private fun getOrCreateMessageChannelId(threadId: Long): String {
+        val hasCustomNotifications =
+            context.config.customNotifications.contains(threadId.toString())
+        val channelId =
+            if (hasCustomNotifications) threadId.toString() else NOTIFICATION_CHANNEL_ID
+        if (!hasCustomNotifications) {
+            createChannel(channelId, context.getString(R.string.channel_received_sms))
+        }
+
+        return channelId
+    }
+
+    private fun createChannel(id: String, name: String) {
         val importance = IMPORTANCE_HIGH
         NotificationChannel(id, name, importance).apply {
             setBypassDnd(false)
             enableLights(true)
-            setSound(soundUri, audioAttributes)
+            setSound(soundUri, notificationAudioAttributes)
             enableVibration(true)
             notificationManager.createNotificationChannel(this)
         }
@@ -283,5 +370,12 @@ class NotificationHelper(private val context: Context) {
         } else {
             emptyList()
         }
+    }
+
+    private companion object {
+        const val ALERT_VIBRATION_MS = 150L
+
+        @Volatile
+        var currentAlert: Ringtone? = null
     }
 }
