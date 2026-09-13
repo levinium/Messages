@@ -45,12 +45,10 @@ object VisibleScreenTracker {
         }
     }
 
-    /** Whether a message arriving in [threadId] lands somewhere the user can already see it. */
-    fun isThreadOnScreen(threadId: Long): Boolean {
-        if (visibleConversationLists.get() > 0) {
-            return true
-        }
+    fun isConversationsListVisible(): Boolean = visibleConversationLists.get() > 0
 
+    /** Whether [threadId] is open and scrolled to its end, where a new message lands in view. */
+    fun isThreadShowingNewMessages(threadId: Long): Boolean {
         return visibleThreadId == threadId && isVisibleThreadAtBottom
     }
 }

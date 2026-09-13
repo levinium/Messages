@@ -116,6 +116,9 @@ class SettingsActivity : SimpleActivity() {
         setupGroupMessageAsMMS()
         setupKeepConversationsArchived()
         setupLockScreenVisibility()
+        setupSkipNotificationInOpenConversation()
+        setupSkipNotificationInConversationsList()
+        setupAlertForSkippedNotifications()
         setupMMSFileSizeLimit()
         setupUseRecycleBin()
         setupEmptyRecycleBin()
@@ -328,6 +331,45 @@ class SettingsActivity : SimpleActivity() {
                 settingsLockScreenVisibility.text = getLockScreenVisibilityText()
             }
         }
+    }
+
+    private fun setupSkipNotificationInOpenConversation() = binding.apply {
+        settingsSkipNotificationInOpenConversation.isChecked =
+            config.skipNotificationInOpenConversation
+        settingsSkipNotificationInOpenConversationHolder.setOnClickListener {
+            settingsSkipNotificationInOpenConversation.toggle()
+            config.skipNotificationInOpenConversation =
+                settingsSkipNotificationInOpenConversation.isChecked
+            updateAlertForSkippedNotificationsVisibility()
+        }
+    }
+
+    private fun setupSkipNotificationInConversationsList() = binding.apply {
+        settingsSkipNotificationInConversationsList.isChecked =
+            config.skipNotificationInConversationsList
+        settingsSkipNotificationInConversationsListHolder.setOnClickListener {
+            settingsSkipNotificationInConversationsList.toggle()
+            config.skipNotificationInConversationsList =
+                settingsSkipNotificationInConversationsList.isChecked
+            updateAlertForSkippedNotificationsVisibility()
+        }
+    }
+
+    private fun setupAlertForSkippedNotifications() = binding.apply {
+        settingsAlertForSkippedNotifications.isChecked = config.alertForSkippedNotifications
+        settingsAlertForSkippedNotificationsHolder.setOnClickListener {
+            settingsAlertForSkippedNotifications.toggle()
+            config.alertForSkippedNotifications = settingsAlertForSkippedNotifications.isChecked
+        }
+
+        updateAlertForSkippedNotificationsVisibility()
+    }
+
+    /** There is nothing to alert about when no notification ever gets skipped. */
+    private fun updateAlertForSkippedNotificationsVisibility() = binding.apply {
+        settingsAlertForSkippedNotificationsHolder.beVisibleIf(
+            config.skipNotificationInOpenConversation || config.skipNotificationInConversationsList
+        )
     }
 
     private fun getLockScreenVisibilityText() = getString(

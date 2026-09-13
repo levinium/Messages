@@ -719,12 +719,24 @@ class ThreadActivity : SimpleActivity() {
         isThreadAtBottom = isAtBottom
         VisibleScreenTracker.onThreadScrolled(threadId, isAtBottom)
 
-        if (reachedBottom && isActivityVisible && !isRecycleBin) {
-            notificationManager.cancel(threadId.hashCode())
-            ensureBackgroundThread {
-                markThreadMessagesRead(threadId)
-                refreshConversations()
-            }
+        if (reachedBottom) {
+            onConversationEndReached()
+        }
+    }
+
+    /**
+     * Scrolling down to the end of the conversation means any messages that raised a notification
+     * have now been seen, so the notification is dropped and they are marked as read.
+     */
+    private fun onConversationEndReached() {
+        if (!isActivityVisible || isRecycleBin || !config.skipNotificationInOpenConversation) {
+            return
+        }
+
+        notificationManager.cancel(threadId.hashCode())
+        ensureBackgroundThread {
+            markThreadMessagesRead(threadId)
+            refreshConversations()
         }
     }
 
@@ -1952,7 +1964,7 @@ class ThreadActivity : SimpleActivity() {
      * conversation would stay highlighted as unread while it is being read.
      */
     private fun markMessagesReadIfVisible() {
-        if (!isActivityVisible || !isThreadAtBottom) {
+        if (!isActivityVisible || !isThreadAtBottom || !config.skipNotificationInOpenConversation) {
             return
         }
 

@@ -230,6 +230,51 @@
 
             </RelativeLayout>
 
+            <RelativeLayout
+                android:id="@+id/settings_skip_notification_in_open_conversation_holder"
+                style="@style/SettingsHolderSwitchStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <org.fossify.commons.views.MyMaterialSwitch
+                    android:id="@+id/settings_skip_notification_in_open_conversation"
+                    style="@style/SettingsSwitchStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/skip_notification_in_open_conversation" />
+
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/settings_skip_notification_in_conversations_list_holder"
+                style="@style/SettingsHolderSwitchStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <org.fossify.commons.views.MyMaterialSwitch
+                    android:id="@+id/settings_skip_notification_in_conversations_list"
+                    style="@style/SettingsSwitchStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/skip_notification_in_conversations_list" />
+
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/settings_alert_for_skipped_notifications_holder"
+                style="@style/SettingsHolderSwitchStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <org.fossify.commons.views.MyMaterialSwitch
+                    android:id="@+id/settings_alert_for_skipped_notifications"
+                    style="@style/SettingsSwitchStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/alert_for_skipped_notifications" />
+
+            </RelativeLayout>
+
             <include
                 android:id="@+id/settings_notifications_divider"
                 layout="@layout/divider" />

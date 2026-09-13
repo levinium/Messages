@@ -53,6 +53,24 @@ class Config(context: Context) : BaseConfig(context) {
         set(lockScreenVisibilitySetting) = prefs.edit()
             .putInt(LOCK_SCREEN_VISIBILITY, lockScreenVisibilitySetting).apply()
 
+    var skipNotificationInOpenConversation: Boolean
+        get() = prefs.getBoolean(SKIP_NOTIFICATION_IN_OPEN_CONVERSATION, true)
+        set(skipNotificationInOpenConversation) = prefs.edit()
+            .putBoolean(SKIP_NOTIFICATION_IN_OPEN_CONVERSATION, skipNotificationInOpenConversation)
+            .apply()
+
+    var skipNotificationInConversationsList: Boolean
+        get() = prefs.getBoolean(SKIP_NOTIFICATION_IN_CONVERSATIONS_LIST, true)
+        set(skipNotificationInConversationsList) = prefs.edit()
+            .putBoolean(
+                SKIP_NOTIFICATION_IN_CONVERSATIONS_LIST, skipNotificationInConversationsList
+            ).apply()
+
+    var alertForSkippedNotifications: Boolean
+        get() = prefs.getBoolean(ALERT_FOR_SKIPPED_NOTIFICATIONS, true)
+        set(alertForSkippedNotifications) = prefs.edit()
+            .putBoolean(ALERT_FOR_SKIPPED_NOTIFICATIONS, alertForSkippedNotifications).apply()
+
     var mmsFileSizeLimit: Long
         get() = prefs.getLong(MMS_FILE_SIZE_LIMIT, FILE_SIZE_200_KB)
         set(mmsFileSizeLimit) = prefs.edit().putLong(MMS_FILE_SIZE_LIMIT, mmsFileSizeLimit).apply()

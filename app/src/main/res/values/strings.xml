@@ -95,6 +95,9 @@
     <string name="not_blocking_keywords">You are not blocking any keywords. You may add keywords here to block all messages containing them.</string>
     <string name="add_a_blocked_keyword">Add a blocked keyword</string>
     <string name="lock_screen_visibility">Lock screen notification visibility</string>
+    <string name="skip_notification_in_open_conversation">Skip notifications for the open conversation</string>
+    <string name="skip_notification_in_conversations_list">Skip notifications on the conversations list</string>
+    <string name="alert_for_skipped_notifications">Still play a sound or vibrate for skipped notifications</string>
     <string name="sender_and_message">Sender and message</string>
     <string name="sender_only">Sender only</string>
     <string name="enable_delivery_reports">Enable delivery reports</string>

@@ -1072,9 +1072,12 @@ fun Context.showReceivedMessageNotification(
     // the message is already on screen, notifying about it would only give the user something to
     // dismiss. The alert is still played so the arrival doesn't go unnoticed, and the conversation
     // shortcut is still kept up to date, which normally happens as a side effect of notifying.
-    if (VisibleScreenTracker.isThreadOnScreen(threadId)) {
+    if (shouldSkipNotificationFor(threadId)) {
         val helper = shortcutHelper
-        notificationHelper.playMessageAlert(threadId)
+        if (config.alertForSkippedNotifications) {
+            notificationHelper.playMessageAlert(threadId)
+        }
+
         ensureBackgroundThread {
             if (helper.getShortcut(threadId) == null) {
                 helper.createOrUpdateShortcut(threadId)
@@ -1094,6 +1097,22 @@ fun Context.showReceivedMessageNotification(
             bitmap = bitmap,
             sender = senderName
         )
+    }
+}
+
+/**
+ * Whether a message arriving in [threadId] lands on a screen the user is already looking at, and
+ * has been configured not to notify about.
+ */
+fun Context.shouldSkipNotificationFor(threadId: Long): Boolean {
+    return when {
+        VisibleScreenTracker.isConversationsListVisible() ->
+            config.skipNotificationInConversationsList
+
+        VisibleScreenTracker.isThreadShowingNewMessages(threadId) ->
+            config.skipNotificationInOpenConversation
+
+        else -> false
     }
 }
 
