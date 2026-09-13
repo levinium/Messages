@@ -178,6 +178,7 @@ import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_NUMBER
 import org.fossify.messages.helpers.THREAD_TEXT
 import org.fossify.messages.helpers.THREAD_TITLE
+import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.helpers.generateRandomId
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.refreshMessages
@@ -208,6 +209,10 @@ class ThreadActivity : SimpleActivity() {
     private var threadId = 0L
     private var currentSIMCardIndex = 0
     private var isActivityVisible = false
+
+    /** Read from background threads handling incoming messages, only ever written on the UI one. */
+    @Volatile
+    private var isThreadAtBottom = true
     private var refreshedSinceSent = false
     private var threadItems: List<ThreadItem> = emptyList()
     private var bus: EventBus? = null
@@ -286,6 +291,11 @@ class ThreadActivity : SimpleActivity() {
         )
 
         isActivityVisible = true
+        if (!isRecycleBin) {
+            // the recycle bin shows a copy of the thread that incoming messages never reach
+            VisibleScreenTracker.onThreadResumed(threadId, isThreadAtBottom)
+            binding.threadMessagesList.post { updateThreadBottomState() }
+        }
 
         notificationManager.cancel(threadId.hashCode())
 
@@ -319,6 +329,7 @@ class ThreadActivity : SimpleActivity() {
         saveDraftMessage()
         bus?.post(Events.RefreshConversations())
         isActivityVisible = false
+        VisibleScreenTracker.onThreadPaused(threadId)
     }
 
     override fun onStop() {
@@ -673,6 +684,7 @@ class ThreadActivity : SimpleActivity() {
         binding.threadMessagesList.onScroll(
             onScrolled = { dx, dy ->
                 tryLoadMoreMessages()
+                updateThreadBottomState()
                 val layoutManager = binding.threadMessagesList.layoutManager as LinearLayoutManager
                 val lastVisibleItemPosition = layoutManager.findLastCompletelyVisibleItemPosition()
                 val isCloseToBottom =
@@ -684,6 +696,36 @@ class ThreadActivity : SimpleActivity() {
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) tryLoadMoreMessages()
             }
         )
+
+        // the keyboard opening or closing resizes the list without scrolling it
+        binding.threadMessagesList.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateThreadBottomState()
+        }
+    }
+
+    /**
+     * Tracks whether the end of the conversation is on screen, which decides whether an incoming
+     * message needs a notification at all. Scrolling down to the end means the messages that raised
+     * a notification have now been seen, so it is dropped and they are marked as read.
+     */
+    private fun updateThreadBottomState() {
+        val layoutManager = binding.threadMessagesList.layoutManager as? LinearLayoutManager ?: return
+        val itemCount = binding.threadMessagesList.adapter?.itemCount ?: return
+        val lastVisiblePosition = layoutManager.findLastVisibleItemPosition()
+        val isAtBottom = lastVisiblePosition == RecyclerView.NO_POSITION ||
+                lastVisiblePosition >= itemCount - 1
+
+        val reachedBottom = isAtBottom && !isThreadAtBottom
+        isThreadAtBottom = isAtBottom
+        VisibleScreenTracker.onThreadScrolled(threadId, isAtBottom)
+
+        if (reachedBottom && isActivityVisible && !isRecycleBin) {
+            notificationManager.cancel(threadId.hashCode())
+            ensureBackgroundThread {
+                markThreadMessagesRead(threadId)
+                refreshConversations()
+            }
+        }
     }
 
     private fun handleItemClick(any: Any) {
@@ -1865,10 +1907,6 @@ class ThreadActivity : SimpleActivity() {
         refreshedSinceSent = true
         allMessagesFetched = false
 
-        if (isActivityVisible) {
-            notificationManager.cancel(threadId.hashCode())
-        }
-
         val messageSnapshot = messages.toSortedMessages()
         val lastMaxId = messageSnapshot.filterNot { it.isScheduled }.maxByOrNull { it.id }?.id ?: 0L
         val providerParticipantsChanged = reconcileProviderParticipants()
@@ -1898,6 +1936,7 @@ class ThreadActivity : SimpleActivity() {
                 messagesDB.insertOrIgnore(latestMessage)
             }
 
+        markMessagesReadIfVisible()
         setupAdapter()
         runOnUiThread {
             if (providerParticipantsChanged) {
@@ -1905,6 +1944,21 @@ class ThreadActivity : SimpleActivity() {
             }
             setupSIMSelector()
         }
+    }
+
+    /**
+     * Messages that arrive while the user is looking at the end of the conversation are already on
+     * screen, so they count as read and any notification they raised is dropped. Otherwise the
+     * conversation would stay highlighted as unread while it is being read.
+     */
+    private fun markMessagesReadIfVisible() {
+        if (!isActivityVisible || !isThreadAtBottom) {
+            return
+        }
+
+        notificationManager.cancel(threadId.hashCode())
+        markThreadMessagesRead(threadId)
+        refreshConversations()
     }
 
     private fun isMmsMessage(text: String): Boolean {

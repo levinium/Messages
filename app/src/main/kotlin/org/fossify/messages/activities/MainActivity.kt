@@ -66,6 +66,7 @@ import org.fossify.messages.extensions.messagesDB
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
+import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
@@ -108,6 +109,7 @@ class MainActivity : SimpleActivity() {
 
     override fun onResume() {
         super.onResume()
+        VisibleScreenTracker.onConversationsListResumed()
         updateMenuColors()
         refreshMenuItems()
 
@@ -137,6 +139,7 @@ class MainActivity : SimpleActivity() {
 
     override fun onPause() {
         super.onPause()
+        VisibleScreenTracker.onConversationsListPaused()
         storeStateVariables()
     }
 
