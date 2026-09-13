@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "17 13 * * *" # daily, off the hour to avoid GitHub's busiest scheduling slots
   workflow_dispatch: # so it can be tested on demand
+    inputs:
+      issues:
+        description: Upstream issue numbers to check, space separated
+        required: false
+        default: "877 878"
 
 permissions:
   issues: write
@@ -21,7 +26,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           UPSTREAM: FossifyOrg/Messages
-          WATCHED_ISSUES: "877 878"
+          WATCHED_ISSUES: ${{ inputs.issues || '877 878' }}
           LABEL: help wanted
         run: |
           set -euo pipefail
