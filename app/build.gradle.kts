@@ -33,6 +33,13 @@ android {
 
     defaultConfig {
         applicationId = project.property("APPLICATION_ID").toString()
+
+        // Commons toggles the launcher icon aliases using component names it builds as
+        // "${appId.removeSuffix(".debug")}.activities.SplashActivity<Color>". Manifest names have to
+        // match that exactly, so this placeholder carries the applicationId without the debug
+        // suffix -- do not use ${applicationId}, which includes it on debug builds.
+        manifestPlaceholders["appId"] = project.property("APPLICATION_ID").toString()
+
         minSdk = project.libs.versions.app.build.minimumSDK.get().toInt()
         targetSdk = project.libs.versions.app.build.targetSDK.get().toInt()
         versionName = project.property("VERSION_NAME").toString()
