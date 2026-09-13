@@ -1,0 +1,75 @@
+name: Watch upstream issue labels
+
+# Fossify's bot closes any pull request whose issue is not labelled "help wanted", so the two
+# upstream reports have to earn that label before the fixes can be submitted. GitHub does not send
+# a notification when an issue is merely labelled, so poll for it and raise an issue here instead,
+# which does notify.
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily, off the hour to avoid GitHub's busiest scheduling slots
+  workflow_dispatch: # so it can be tested on demand
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check upstream issues for the help wanted label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM: FossifyOrg/Messages
+          WATCHED_ISSUES: "877 878"
+          LABEL: help wanted
+        run: |
+          set -euo pipefail
+
+          for issue in $WATCHED_ISSUES; do
+            # The upstream repository is public, so this needs no credentials of its own.
+            state=$(gh issue view "$issue" --repo "$UPSTREAM" --json state --jq '.state')
+            labels=$(gh issue view "$issue" --repo "$UPSTREAM" --json labels --jq '.labels[].name')
+
+            echo "upstream #$issue is $state with labels: $(echo "$labels" | paste -sd, -)"
+
+            if [ "$state" != "OPEN" ]; then
+              echo "  not open, skipping"
+              continue
+            fi
+
+            if ! echo "$labels" | grep -qxF "$LABEL"; then
+              echo "  no '$LABEL' label yet"
+              continue
+            fi
+
+            title="Upstream #$issue is labelled '$LABEL' - open the PR"
+
+            # Only nag once per issue: skip if we already raised this, open or closed.
+            if gh issue list --repo "${{ github.repository }}" --state all --search "$title in:title" \
+                --json title --jq '.[].title' | grep -qxF "$title"; then
+              echo "  already raised, nothing to do"
+              continue
+            fi
+
+            gh issue create --repo "${{ github.repository }}" \
+              --title "$title" \
+              --assignee "${{ github.repository_owner }}" \
+              --body "[$UPSTREAM#$issue](https://github.com/$UPSTREAM/issues/$issue) now carries the \`$LABEL\` label, so a pull request for it will no longer be closed unreviewed.
+
+          Before opening it:
+
+          \`\`\`sh
+          git fetch upstream main
+          git checkout <the branch for this issue>
+          git rebase upstream/main
+          ./gradlew assembleFossDebug detekt lintFossDebug
+          git push --force-with-lease origin <branch>
+          gh pr create --repo $UPSTREAM --base main --head ${{ github.repository_owner }}:<branch>
+          \`\`\`
+
+          Branches: \`fix/skip-notification-in-open-conversation\` for #877, \`fix/scroll-to-new-message\` for #878. Open only the one whose issue is labelled - upstream asks that unrelated changes not be combined.
+
+          Raised automatically by \`.github/workflows/watch-upstream-labels.yml\`."
+            echo "  raised an issue"
+          done
