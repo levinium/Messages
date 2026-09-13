@@ -6,7 +6,7 @@ This is not a Fossify product and is not affiliated with, endorsed by, or suppor
 project. Please do not report problems with this fork to them — open an issue
 [here](https://github.com/levinium/Messages/issues) instead.
 
-It installs as its own app (`org.levinium.messages`), so it sits alongside Fossify Messages
+It installs as its own app (`org.fossify.messages.levinium`), so it sits alongside Fossify Messages
 rather than replacing it. Only one app can be your default SMS app at a time.
 
 ## Why this fork exists
@@ -80,7 +80,7 @@ key over an existing install, so updates must come from this repo.
 Requires JDK 17+ and the Android SDK (compileSdk 36).
 
 ```sh
-./gradlew assembleFossDebug      # debug build, installs as org.levinium.messages.debug
+./gradlew assembleFossDebug      # debug build, installs as org.fossify.messages.levinium.debug
 ./gradlew assembleFossRelease    # release build; needs keystore.properties, see app/build.gradle.kts
 ```
 
