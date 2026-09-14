@@ -23,9 +23,21 @@ fun hasSigningVars(): Boolean {
             && providers.environmentVariable("SIGNING_STORE_PASSWORD").orNull != null
 }
 
+// Upstream's release, and which build of this fork against it.
+//
+// The version code folds both together as upstream * 100 + fork, which keeps it
+// strictly increasing in both directions: a new fork build beats the last one,
+// and a new upstream release beats every fork build of the previous one. It has
+// to increase, or Android will not treat the result as an update.
+val upstreamVersionName = project.property("VERSION_NAME").toString()
+val upstreamVersionCode = project.property("VERSION_CODE").toString().toInt()
+val leviniumBuild = project.property("LEVINIUM_BUILD").toString().toInt()
+
+val leviniumVersionName = "$upstreamVersionName-levinium.$leviniumBuild"
+val leviniumVersionCode = upstreamVersionCode * 100 + leviniumBuild
+
 base {
-    val versionCode = project.property("VERSION_CODE").toString().toInt()
-    archivesName = "levinium-messages-$versionCode"
+    archivesName = "levinium-messages-$leviniumVersionCode"
 }
 
 android {
@@ -42,8 +54,8 @@ android {
 
         minSdk = project.libs.versions.app.build.minimumSDK.get().toInt()
         targetSdk = project.libs.versions.app.build.targetSDK.get().toInt()
-        versionName = project.property("VERSION_NAME").toString()
-        versionCode = project.property("VERSION_CODE").toString().toInt()
+        versionName = leviniumVersionName
+        versionCode = leviniumVersionCode
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
