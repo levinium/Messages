@@ -131,6 +131,7 @@ import org.fossify.messages.extensions.getAddresses
 import org.fossify.messages.extensions.getDefaultKeyboardHeight
 import org.fossify.messages.extensions.getFileSizeFromUri
 import org.fossify.messages.extensions.getMessages
+import org.fossify.messages.extensions.searchThreadMessageIds
 import org.fossify.messages.extensions.getSmsDraft
 import org.fossify.messages.extensions.getThreadId
 import org.fossify.messages.extensions.getThreadParticipants
@@ -179,6 +180,7 @@ import org.fossify.messages.helpers.THREAD_NUMBER
 import org.fossify.messages.helpers.THREAD_TEXT
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.helpers.VisibleScreenTracker
+import org.fossify.messages.helpers.isVerificationCodeThread
 import org.fossify.messages.helpers.generateRandomId
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.refreshMessages
@@ -383,8 +385,22 @@ class ThreadActivity : SimpleActivity() {
             findItem(R.id.block_number).title =
                 addLockedLabelIfNeeded(org.fossify.commons.R.string.block_number)
             findItem(R.id.block_number).isVisible = !isRecycleBin
+            // A passcode thread is never called and rarely searched, so the toolbar offers the one
+            // thing it is actually for: getting rid of the codes.
+            val isVerificationCodeThread = isVerificationCodeThread()
+            findItem(R.id.search_in_conversation).isVisible =
+                !isVerificationCodeThread && threadItems.isNotEmpty() && !isRecycleBin
+            findItem(R.id.delete).setShowAsAction(
+                if (isVerificationCodeThread) {
+                    MenuItem.SHOW_AS_ACTION_ALWAYS
+                } else {
+                    MenuItem.SHOW_AS_ACTION_NEVER
+                }
+            )
+
             findItem(R.id.dial_number).isVisible =
-                participants.size == 1 && !isSpecialNumber() && !isRecycleBin
+                participants.size == 1 && !isSpecialNumber() && !isRecycleBin &&
+                        !isVerificationCodeThread
             findItem(R.id.manage_people).isVisible = !isSpecialNumber() && !isRecycleBin
             findItem(R.id.mark_as_unread).isVisible = threadItems.isNotEmpty() && !isRecycleBin
 
@@ -438,10 +454,7 @@ class ThreadActivity : SimpleActivity() {
 
         ensureBackgroundThread {
             // Newest first, so the first match is the one nearest the bottom of the conversation.
-            val matches = messagesDB.getNonRecycledThreadMessages(threadId)
-                .filter { it.body.contains(query, ignoreCase = true) }
-                .sortedByDescending { it.date }
-                .map { it.id }
+            val matches = searchThreadMessageIds(threadId, query)
 
             runOnUiThread {
                 searchMatches = matches
@@ -457,14 +470,17 @@ class ThreadActivity : SimpleActivity() {
         }
     }
 
-    /** Positive walks back through the conversation, negative walks forward towards the latest. */
+    /**
+     * Positive walks back through the conversation, negative walks forward towards the latest.
+     * Both wrap, so stepping past the last match returns to the first rather than stopping dead.
+     */
     private fun stepToMatch(direction: Int) {
         if (searchMatches.isEmpty()) {
             return
         }
 
-        currentMatchIndex =
-            (currentMatchIndex + direction).coerceIn(0, searchMatches.lastIndex)
+        val count = searchMatches.size
+        currentMatchIndex = ((currentMatchIndex + direction) % count + count) % count
         updateSearchCount()
 
         val messageId = searchMatches[currentMatchIndex]
@@ -1200,6 +1216,20 @@ class ThreadActivity : SimpleActivity() {
                 maybeDisableShortCodeReply()
             }
         }
+    }
+
+    /**
+     * Whether this conversation is one of those verification-code threads. Participants saved in
+     * the address book disqualify it outright, so a real person is never treated as a robot.
+     */
+    private fun isVerificationCodeThread(): Boolean {
+        if (isRecycleBin || participants.size != 1) {
+            return false
+        }
+
+        val participant = participants.first()
+        val isKnownContact = participant.name != participant.phoneNumbers.firstOrNull()?.value
+        return messages.isVerificationCodeThread(isKnownContact)
     }
 
     private fun isSpecialNumber(): Boolean {

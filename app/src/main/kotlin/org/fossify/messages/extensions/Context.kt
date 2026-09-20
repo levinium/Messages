@@ -112,6 +112,46 @@ val Context.smsSender
 
 val Context.shortcutHelper get() = ShortcutHelper(this)
 
+/**
+ * Finds every message in one conversation whose body contains [query], newest first.
+ *
+ * Goes to the system message store rather than the app's own cache, because the cache only holds
+ * what has been loaded, and a search that silently skips old messages is worse than no search.
+ * MMS bodies live in a separate parts table, so those come from the cache and are merged in.
+ */
+fun Context.searchThreadMessageIds(threadId: Long, query: String): List<Long> {
+    if (query.isBlank()) {
+        return emptyList()
+    }
+
+    val matches = mutableMapOf<Long, Int>() // id to date, so both sources can be ordered together
+
+    val projection = arrayOf(Sms._ID, Sms.DATE)
+    // LIKE treats % and _ as wildcards, so a search for "50%" has to escape them to mean itself.
+    val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    val selection = "${Sms.THREAD_ID} = ? AND ${Sms.BODY} LIKE ? ESCAPE '\\'"
+    val selectionArgs = arrayOf(threadId.toString(), "%$escaped%")
+
+    try {
+        queryCursor(Sms.CONTENT_URI, projection, selection, selectionArgs) { cursor ->
+            val id = cursor.getLongValue(Sms._ID)
+            matches[id] = (cursor.getLongValue(Sms.DATE) / 1000).toInt()
+        }
+    } catch (e: Exception) {
+        showErrorToast(e)
+    }
+
+    try {
+        messagesDB.getNonRecycledThreadMessages(threadId)
+            .filter { it.isMMS && it.body.contains(query, ignoreCase = true) }
+            .forEach { matches[it.id] = it.date }
+    } catch (_: Exception) {
+        // the cache is a bonus here, the provider results above are the ones that matter
+    }
+
+    return matches.entries.sortedByDescending { it.value }.map { it.key }
+}
+
 fun Context.getMessages(
     threadId: Long,
     dateFrom: Int = -1,
