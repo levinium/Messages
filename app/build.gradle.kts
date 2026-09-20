@@ -24,18 +24,11 @@ fun hasSigningVars(): Boolean {
             && providers.environmentVariable("SIGNING_STORE_PASSWORD").orNull != null
 }
 
-// Upstream's release, and which build of this fork against it.
-//
-// The version code folds both together as upstream * 100 + fork, which keeps it
-// strictly increasing in both directions: a new fork build beats the last one,
-// and a new upstream release beats every fork build of the previous one. It has
-// to increase, or Android will not treat the result as an update.
-val upstreamVersionName = project.property("VERSION_NAME").toString()
-val upstreamVersionCode = project.property("VERSION_CODE").toString().toInt()
-val leviniumBuild = project.property("LEVINIUM_BUILD").toString().toInt()
-
-val leviniumVersionName = "$upstreamVersionName-levinium.$leviniumBuild"
-val leviniumVersionCode = upstreamVersionCode * 100 + leviniumBuild
+// This fork is versioned on its own terms; see gradle.properties. VERSION_NAME and VERSION_CODE
+// stay exactly as upstream ships them, so syncing never conflicts on them, and they record which
+// release this is built on.
+val leviniumVersionName = project.property("LEVINIUM_VERSION_NAME").toString()
+val leviniumVersionCode = project.property("LEVINIUM_VERSION_CODE").toString().toInt()
 
 base {
     archivesName = "levinium-messages-$leviniumVersionCode"

@@ -19,7 +19,9 @@ fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 ## Download
 
-[**LeviniumMessages-1.9.1-levinium.4.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+[**LeviniumMessages-2.0.0.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+
+Built on Fossify Messages 1.9.1.
 
 Your browser or file manager will warn you before installing an app from outside an app store, and
 Android will ask you to allow installs from that app once. That is expected for any APK installed by
