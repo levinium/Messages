@@ -1,8 +1,16 @@
 package org.fossify.messages.adapters
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.StateListDrawable
+import android.util.StateSet
+import android.view.Gravity
 import android.view.Menu
 import android.view.ViewGroup
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.DiffUtil
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -10,7 +18,6 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
-import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
@@ -37,16 +44,43 @@ class MediaGridAdapter(
 ) {
     private val cornerRadius =
         activity.resources.getDimensionPixelSize(R.dimen.media_thumbnail_corner_radius)
+    private val outlineWidth =
+        activity.resources.getDimensionPixelSize(R.dimen.media_selection_outline_width)
+    private val checkSize =
+        activity.resources.getDimensionPixelSize(org.fossify.commons.R.dimen.normal_icon_size)
+    private val checkMargin =
+        activity.resources.getDimensionPixelSize(org.fossify.commons.R.dimen.small_margin)
 
-    private val selectionOverlay by lazy {
-        GradientDrawable().apply {
+    /**
+     * Selection has to be drawn from the view's own selected state rather than from binding:
+     * commons toggles a selection by handing the holder a payload that sets isSelected and
+     * returns, so onBindViewHolder never runs and anything set there would never appear.
+     *
+     * The dim, the ring and the check mark are one drawable, built per cell because a state-list
+     * shared between views would light every cell up at once.
+     */
+    private fun selectionForeground(): Drawable {
+        val ringAndDim = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            this.cornerRadius = this@MediaGridAdapter.cornerRadius.toFloat()
+            cornerRadius = this@MediaGridAdapter.cornerRadius.toFloat()
             setColor(activity.getColor(R.color.media_selection_scrim))
-            setStroke(
-                activity.resources.getDimensionPixelSize(R.dimen.media_selection_outline_width),
-                properPrimaryColor
-            )
+            setStroke(outlineWidth, properPrimaryColor)
+        }
+
+        val check = AppCompatResources
+            .getDrawable(activity, R.drawable.ic_check_circle_vector)!!
+            .mutate()
+            .apply { setTint(properPrimaryColor) }
+
+        val selected = LayerDrawable(arrayOf(ringAndDim, check)).apply {
+            setLayerSize(CHECK_LAYER, checkSize, checkSize)
+            setLayerGravity(CHECK_LAYER, Gravity.TOP or Gravity.END)
+            setLayerInset(CHECK_LAYER, 0, checkMargin, checkMargin, 0)
+        }
+
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_selected), selected)
+            addState(StateSet.WILD_CARD, ColorDrawable(Color.TRANSPARENT))
         }
     }
 
@@ -95,16 +129,11 @@ class MediaGridAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
         holder.bindView(item, allowSingleClick = true, allowLongClick = true) { itemView, _ ->
-            ItemMediaGridBinding.bind(itemView).apply {
-                val isSelected = selectedKeys.contains(item.hashCode())
-                mediaGridCheck.beVisibleIf(isSelected)
-                mediaGridPlay.beVisibleIf(item.mimetype.isVideoMimeType())
+            itemView.foreground = selectionForeground()
+            itemView.isSelected = selectedKeys.contains(item.hashCode())
 
-                // A picture is busy enough that a corner check alone is easy to miss, so a
-                // selected one is dimmed and ringed in the user's own colour. Both ride on the
-                // thumbnail's foreground, which is the only thing guaranteed to match its bounds.
-                mediaGridThumbnail.foreground = if (isSelected) selectionOverlay else null
-                mediaGridCheck.applyColorFilter(properPrimaryColor)
+            ItemMediaGridBinding.bind(itemView).apply {
+                mediaGridPlay.beVisibleIf(item.mimetype.isVideoMimeType())
 
                 Glide.with(activity)
                     .load(item.uri)
@@ -128,6 +157,11 @@ class MediaGridAdapter(
     }
 
     private fun getSelectedItems() = currentList.filter { selectedKeys.contains(it.hashCode()) }
+
+    private companion object {
+        /** The check mark's index inside the selected-state layer drawable. */
+        const val CHECK_LAYER = 1
+    }
 }
 
 private class MediaItemDiffCallback : DiffUtil.ItemCallback<MediaItem>() {
