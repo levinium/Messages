@@ -106,6 +106,7 @@ class ThreadAdapter(
     activity: SimpleActivity,
     recyclerView: MyRecyclerView,
     itemClick: (Any) -> Unit,
+    val retryMessage: (messageId: Long) -> Unit,
     val isRecycleBin: Boolean,
     val deleteMessages: (messages: List<Message>, toRecycleBin: Boolean, fromRecycleBin: Boolean) -> Unit
 ) : MyRecyclerViewListAdapter<ThreadItem>(activity, recyclerView, ThreadItemDiffCallback(), itemClick) {
@@ -135,6 +136,10 @@ class ThreadAdapter(
         private const val LINK_COPY = 0
         private const val LINK_OPEN = 1
         private const val LINK_SHARE = 2
+
+        /** Status lines sit beneath the message and should never compete with it. */
+        private const val STATUS_TEXT_SCALE = 0.8f
+        private const val STATUS_ALPHA = 0.7f
     }
 
     init {
@@ -217,7 +222,7 @@ class ThreadAdapter(
         holder.bindView(item, isClickable, isLongClickable) { itemView, _ ->
             when (item) {
                 is ThreadDateTime -> setupDateTime(itemView, item)
-                is ThreadError -> setupThreadError(itemView)
+                is ThreadError -> setupThreadError(itemView, item)
                 is ThreadSent -> setupThreadSuccess(itemView, item.delivered)
                 is ThreadSending -> setupThreadSending(itemView)
                 is Message -> setupView(holder, itemView, item)
@@ -759,20 +764,54 @@ class ThreadAdapter(
 
     private fun setupThreadSuccess(view: View, isDelivered: Boolean) {
         ItemThreadSuccessBinding.bind(view).apply {
-            threadSuccess.setImageResource(if (isDelivered) R.drawable.ic_check_double_vector else org.fossify.commons.R.drawable.ic_check_vector)
+            val statusLabel = if (isDelivered) R.string.message_delivered else R.string.message_sent
+            threadSuccessLabel.apply {
+                text = activity.getString(statusLabel)
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * STATUS_TEXT_SCALE)
+                setTextColor(textColor)
+                alpha = STATUS_ALPHA
+            }
+
+            threadSuccess.setImageResource(
+                if (isDelivered) {
+                    R.drawable.ic_check_double_vector
+                } else {
+                    org.fossify.commons.R.drawable.ic_check_vector
+                }
+            )
             threadSuccess.applyColorFilter(textColor)
+            threadSuccess.alpha = STATUS_ALPHA
         }
     }
 
-    private fun setupThreadError(view: View) {
-        val binding = ItemThreadErrorBinding.bind(view)
-        binding.threadError.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize - 4)
+    private fun setupThreadError(view: View, item: ThreadError) {
+        ItemThreadErrorBinding.bind(view).apply {
+            val errorColor = activity.getColor(R.color.message_error)
+            threadError.apply {
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * STATUS_TEXT_SCALE)
+                setTextColor(errorColor)
+            }
+
+            threadErrorIcon.applyColorFilter(errorColor)
+
+            threadErrorRetry.apply {
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * STATUS_TEXT_SCALE)
+                setTextColor(properPrimaryColor)
+                setOnClickListener { retryMessage(item.messageId) }
+            }
+        }
     }
 
     private fun setupThreadSending(view: View) {
-        ItemThreadSendingBinding.bind(view).threadSending.apply {
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
-            setTextColor(textColor)
+        ItemThreadSendingBinding.bind(view).apply {
+            threadSending.apply {
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * STATUS_TEXT_SCALE)
+                setTextColor(textColor)
+                alpha = STATUS_ALPHA
+            }
+
+            threadSendingIcon.applyColorFilter(textColor)
+            threadSendingIcon.alpha = STATUS_ALPHA
         }
     }
 

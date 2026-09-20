@@ -231,7 +231,7 @@ class ThreadActivity : SimpleActivity() {
 
     private var isScheduledMessage: Boolean = false
     private var isGroupMessageConfirmationVisible = false
-    private var messageToResend: Long? = null
+
     private var scheduledMessage: Message? = null
     private lateinit var scheduledDateTime: DateTime
 
@@ -423,7 +423,7 @@ class ThreadActivity : SimpleActivity() {
         super.onActivityResult(requestCode, resultCode, resultData)
         if (resultCode != Activity.RESULT_OK) return
         val data = resultData?.data
-        messageToResend = null
+
 
         if (requestCode == CAPTURE_PHOTO_INTENT && capturedImageUri != null) {
             addAttachment(capturedImageUri!!)
@@ -599,6 +599,7 @@ class ThreadActivity : SimpleActivity() {
                 activity = this,
                 recyclerView = binding.threadMessagesList,
                 itemClick = { handleItemClick(it) },
+                retryMessage = { messageId -> retryFailedMessage(messageId) },
                 isRecycleBin = isRecycleBin,
                 deleteMessages = { messages, toRecycleBin, fromRecycleBin ->
                     deleteMessages(
@@ -750,10 +751,7 @@ class ThreadActivity : SimpleActivity() {
         when {
             any is Message && any.isScheduled -> showScheduledMessageInfo(any)
             any is Message -> getOrCreateThreadAdapter().toggleExpanded(any)
-            any is ThreadError -> {
-                binding.messageHolder.threadTypeMessage.setText(any.messageText)
-                messageToResend = any.messageId
-            }
+            any is ThreadError -> retryFailedMessage(any.messageId)
         }
     }
 
@@ -952,7 +950,7 @@ class ThreadActivity : SimpleActivity() {
             }
 
             threadTypeMessage.onTextChangeListener {
-                messageToResend = null
+
                 checkSendMessageAvailability()
                 val messageString = if (config.useSimpleCharacters) {
                     it.normalizeString()
@@ -1749,7 +1747,7 @@ class ThreadActivity : SimpleActivity() {
 
         try {
             refreshedSinceSent = false
-            sendMessageCompat(text, addresses, subscriptionId, attachments, messageToResend)
+            sendMessageCompat(text, addresses, subscriptionId, attachments)
             ensureBackgroundThread {
                 val existingMessages = messages.toSortedMessages()
                 val messages = getMessages(threadId, limit = maxOf(1, attachments.size))
@@ -1760,6 +1758,44 @@ class ThreadActivity : SimpleActivity() {
             }
             clearCurrentMessage()
 
+        } catch (e: Exception) {
+            showErrorToast(e)
+        } catch (e: Error) {
+            showErrorToast(
+                e.localizedMessage ?: getString(org.fossify.commons.R.string.unknown_error_occurred)
+            )
+        }
+    }
+
+    /**
+     * Sends a failed message again in place.
+     *
+     * Passing its id back to the sender makes it reuse that row rather than write a new one, so
+     * the thread does not end up with the failed attempt sitting above its retry. Nothing touches
+     * the compose box: whatever was being typed there is somebody's unsent reply, not this.
+     */
+    private fun retryFailedMessage(messageId: Long) {
+        val message = messages.firstOrNull { it.id == messageId } ?: return
+        val subscriptionId = availableSIMCards.getOrNull(currentSIMCardIndex)?.subscriptionId
+            ?: message.subscriptionId
+        val attachments = message.attachment?.attachments.orEmpty()
+
+        try {
+            refreshedSinceSent = false
+            sendMessageCompat(
+                text = message.body,
+                addresses = participants.getAddresses(),
+                subId = subscriptionId,
+                attachments = attachments,
+                messageId = messageId
+            )
+
+            toast(R.string.message_resending)
+            ensureBackgroundThread {
+                getMessages(threadId, limit = MESSAGES_LIMIT)
+                    .firstOrNull { it.id == messageId }
+                    ?.let { insertOrUpdateMessage(it) }
+            }
         } catch (e: Exception) {
             showErrorToast(e)
         } catch (e: Error) {

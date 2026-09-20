@@ -1,16 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="end"
-    android:paddingEnd="@dimen/activity_margin">
+    android:gravity="end|center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/activity_margin"
+    android:paddingEnd="@dimen/activity_margin"
+    android:paddingBottom="@dimen/tiny_margin">
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/thread_success_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/tiny_margin"
+        android:textSize="@dimen/smaller_text_size"
+        tools:text="@string/message_delivered" />
 
     <ImageView
         android:id="@+id/thread_success"
         android:layout_width="@dimen/activity_margin"
         android:layout_height="@dimen/activity_margin"
-        android:layout_marginTop="@dimen/small_margin"
-        android:layout_marginBottom="@dimen/small_margin"
-        android:src="@drawable/ic_check_vector" />
+        android:src="@drawable/ic_check_double_vector"
+        tools:ignore="ContentDescription" />
 
-</RelativeLayout>
+</LinearLayout>

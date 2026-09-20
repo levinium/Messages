@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- A message that failed to send. Readable on both the light and the dark background. -->
+    <color name="message_error">#E53935</color>
+
 </resources>
