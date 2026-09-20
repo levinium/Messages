@@ -10,8 +10,10 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import org.fossify.commons.extensions.getFilenameFromPath
 import org.fossify.commons.extensions.getProperBackgroundColor
+import org.fossify.commons.extensions.getProperTextColor
 import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.toast
 import org.fossify.commons.extensions.updateTextColors
@@ -26,6 +28,7 @@ import org.fossify.messages.extensions.launchViewIntent
 import org.fossify.messages.extensions.openMediaViewer
 import org.fossify.messages.extensions.shareMediaIntent
 import org.fossify.messages.helpers.MEDIA_ITEMS
+import org.fossify.messages.helpers.formatDayOnly
 import org.fossify.messages.helpers.PICK_SAVE_DIR_INTENT
 import org.fossify.messages.helpers.PICK_SAVE_FILE_INTENT
 import org.fossify.messages.helpers.THREAD_TITLE
@@ -67,6 +70,7 @@ class MediaGridActivity : SimpleActivity() {
             navigationIcon = NavigationIcon.Arrow,
             topBarColor = getProperBackgroundColor()
         )
+        binding.mediaGridToolbar.setSubtitleTextColor(getProperTextColor())
         updateTextColors(binding.mediaGridCoordinator)
     }
 
@@ -102,8 +106,9 @@ class MediaGridActivity : SimpleActivity() {
         val spanCount = (resources.displayMetrics.widthPixels / targetCellWidth).toInt()
             .coerceIn(MIN_COLUMNS, MAX_COLUMNS)
 
+        val layoutManager = GridLayoutManager(this@MediaGridActivity, spanCount)
         binding.mediaGridList.apply {
-            layoutManager = GridLayoutManager(this@MediaGridActivity, spanCount)
+            this.layoutManager = layoutManager
             adapter = MediaGridAdapter(
                 activity = this@MediaGridActivity,
                 recyclerView = this,
@@ -114,7 +119,22 @@ class MediaGridActivity : SimpleActivity() {
             ).apply {
                 submitList(items)
             }
+
+            // The grid is in thread order, so saying which day you have scrolled to is the only
+            // way to tell where in the conversation these pictures came from.
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    showDateOf(layoutManager.findFirstVisibleItemPosition())
+                }
+            })
         }
+
+        showDateOf(0)
+    }
+
+    private fun showDateOf(position: Int) {
+        val item = items.getOrNull(position) ?: return
+        binding.mediaGridToolbar.subtitle = item.dateMillis.formatDayOnly(this)
     }
 
     private fun handleAction(id: Int, selected: List<MediaItem>) {

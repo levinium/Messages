@@ -31,6 +31,18 @@
         app:layout_constraintTop_toTopOf="@id/media_grid_thumbnail"
         tools:visibility="visible" />
 
+    <View
+        android:id="@+id/media_grid_outline"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/media_selection_outline"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/media_grid_thumbnail"
+        app:layout_constraintEnd_toEndOf="@id/media_grid_thumbnail"
+        app:layout_constraintStart_toStartOf="@id/media_grid_thumbnail"
+        app:layout_constraintTop_toTopOf="@id/media_grid_thumbnail"
+        tools:visibility="visible" />
+
     <ImageView
         android:id="@+id/media_grid_play"
         android:layout_width="@dimen/normal_icon_size"

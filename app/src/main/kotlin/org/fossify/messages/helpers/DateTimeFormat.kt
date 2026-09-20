@@ -90,6 +90,18 @@ fun Long.formatMessageDateTimeCompact(context: Context): String {
 }
 
 /**
+ * The day alone, for places that are already sorted by time and only need to say where you are:
+ * the gallery's app bar as it scrolls, for one.
+ */
+fun Long.formatDayOnly(context: Context): String {
+    if (!context.config.useVerboseDateFormat) {
+        return formatDateOrTime(context, hideTimeOnOtherDays = true, showCurrentYear = false)
+    }
+
+    return formatDay(context)
+}
+
+/**
  * The conversations list, where the date sits in a narrow column beside the name. A full timestamp
  * would truncate, so today gives a time and everything else gives a date alone.
  */

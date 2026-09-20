@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The stroke colour is replaced at bind time with the user's theme colour. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="@dimen/media_thumbnail_corner_radius" />
+    <stroke
+        android:width="@dimen/media_selection_outline_width"
+        android:color="@android:color/white" />
+</shape>

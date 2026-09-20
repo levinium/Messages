@@ -26,6 +26,7 @@ import org.fossify.messages.extensions.shareMediaIntent
 import org.fossify.messages.helpers.MEDIA_ITEMS
 import org.fossify.messages.helpers.MEDIA_START_INDEX
 import org.fossify.messages.helpers.PICK_SAVE_FILE_INTENT
+import org.fossify.messages.helpers.formatMessageDateTime
 import org.fossify.messages.models.MediaItem
 import java.io.IOException
 
@@ -168,10 +169,11 @@ class MediaViewerActivity : SimpleActivity() {
     }
 
     private fun updateTitle() {
-        binding.mediaViewerToolbar.title = if (items.size > 1) {
-            "${currentIndex + 1} / ${items.size}"
-        } else {
-            items.getOrNull(currentIndex)?.filename.orEmpty()
+        val item = items.getOrNull(currentIndex)
+        binding.mediaViewerToolbar.apply {
+            // When it was sent says more about a picture from a conversation than its filename.
+            title = item?.dateMillis?.formatMessageDateTime(this@MediaViewerActivity).orEmpty()
+            subtitle = if (items.size > 1) "${currentIndex + 1} / ${items.size}" else null
         }
     }
 }

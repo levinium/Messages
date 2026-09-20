@@ -20,6 +20,7 @@ import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
+import androidx.core.view.doOnPreDraw
 import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
@@ -430,12 +431,28 @@ class ThreadAdapter(
         val previouslyExpanded = expandedMessageId
         expandedMessageId = if (previouslyExpanded == message.id) null else message.id
 
-        listOfNotNull(previouslyExpanded, expandedMessageId).distinct().forEach { id ->
-            val position = currentList.indexOfFirst { (it as? Message)?.id == id }
-            if (position != -1) {
-                notifyItemChanged(position)
-            }
+        rebindInPlace(listOfNotNull(previouslyExpanded, expandedMessageId).distinct())
+    }
+
+    /**
+     * Resizes a message and shifts everything below it in the same frame.
+     *
+     * Left to the default animator the message grows at once while its neighbours slide into
+     * their new places over a quarter of a second, and for those frames the message below is
+     * drawn on top of the one that just opened.
+     */
+    private fun rebindInPlace(messageIds: List<Long>) {
+        val positions = messageIds
+            .map { id -> currentList.indexOfFirst { (it as? Message)?.id == id } }
+            .filter { it != -1 }
+        if (positions.isEmpty()) {
+            return
         }
+
+        val animator = recyclerView.itemAnimator
+        recyclerView.itemAnimator = null
+        positions.forEach { notifyItemChanged(it) }
+        recyclerView.doOnPreDraw { recyclerView.itemAnimator = animator }
     }
 
     /** Marks the search match the user is currently standing on, so the jump lands somewhere visible. */
@@ -455,10 +472,7 @@ class ThreadAdapter(
     fun collapseExpanded() {
         val expanded = expandedMessageId ?: return
         expandedMessageId = null
-        val position = currentList.indexOfFirst { (it as? Message)?.id == expanded }
-        if (position != -1) {
-            notifyItemChanged(position)
-        }
+        rebindInPlace(listOf(expanded))
     }
 
     private fun bodyTextSize(isExpanded: Boolean, isEmojiOnly: Boolean) = when {

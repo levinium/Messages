@@ -1,5 +1,6 @@
 package org.fossify.messages.adapters
 
+import android.graphics.drawable.GradientDrawable
 import android.view.Menu
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -9,6 +10,7 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
+import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
@@ -33,6 +35,11 @@ class MediaGridAdapter(
     diffUtil = MediaItemDiffCallback(),
     itemClick = itemClick
 ) {
+    private val cornerRadius =
+        activity.resources.getDimensionPixelSize(R.dimen.media_thumbnail_corner_radius)
+    private val outlineWidth =
+        activity.resources.getDimensionPixelSize(R.dimen.media_selection_outline_width)
+
     init {
         setupDragListener(true)
     }
@@ -84,12 +91,22 @@ class MediaGridAdapter(
                 mediaGridCheck.beVisibleIf(isSelected)
                 mediaGridPlay.beVisibleIf(item.mimetype.isVideoMimeType())
 
+                // A picture is busy enough that a dimmed corner check is easy to miss, so a
+                // selected one is ringed in the user's own colour as well.
+                mediaGridOutline.beVisibleIf(isSelected)
+                if (isSelected) {
+                    mediaGridCheck.applyColorFilter(properPrimaryColor)
+                    (mediaGridOutline.background as? GradientDrawable)?.mutate()?.let {
+                        (it as GradientDrawable).setStroke(outlineWidth, properPrimaryColor)
+                    }
+                }
+
                 Glide.with(activity)
                     .load(item.uri)
                     .apply(
                         RequestOptions()
                             .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                            .transform(CenterCrop(), RoundedCorners(THUMBNAIL_CORNER_RADIUS))
+                            .transform(CenterCrop(), RoundedCorners(cornerRadius))
                     )
                     .into(mediaGridThumbnail)
             }
@@ -106,10 +123,6 @@ class MediaGridAdapter(
     }
 
     private fun getSelectedItems() = currentList.filter { selectedKeys.contains(it.hashCode()) }
-
-    private companion object {
-        const val THUMBNAIL_CORNER_RADIUS = 8
-    }
 }
 
 private class MediaItemDiffCallback : DiffUtil.ItemCallback<MediaItem>() {

@@ -14,4 +14,6 @@
     <dimen name="attachment_button_height">96dp</dimen>
     <dimen name="attachment_button_width">90dp</dimen>
     <dimen name="default_keyboard_height">250dp</dimen>
+    <dimen name="media_thumbnail_corner_radius">8dp</dimen>
+    <dimen name="media_selection_outline_width">3dp</dimen>
 </resources>
