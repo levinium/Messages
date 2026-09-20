@@ -237,6 +237,9 @@ class ThreadActivity : SimpleActivity() {
 
     private var isAttachmentPickerVisible = false
 
+    private var searchMatches: List<Long> = emptyList()
+    private var currentMatchIndex = -1
+
     private val binding by viewBinding(ActivityThreadBinding::inflate)
 
     override fun onNewIntent(intent: Intent) {
@@ -277,6 +280,7 @@ class ThreadActivity : SimpleActivity() {
         bus!!.register(this)
 
         loadConversation()
+        setupSearch()
         setupAttachmentPickerView()
         hideAttachmentPicker()
         maybeSetupRecycleBinView()
@@ -392,6 +396,90 @@ class ThreadActivity : SimpleActivity() {
         }
     }
 
+    /**
+     * Searching inside one conversation, rather than the whole app. Matches come from the messages
+     * cached for this thread, which is everything the app has synced for it.
+     */
+    private fun setupSearch() = binding.apply {
+        threadSearchQuery.onTextChangeListener { query -> runSearch(query) }
+
+        threadSearchPrevious.setOnClickListener { stepToMatch(1) }
+        threadSearchNext.setOnClickListener { stepToMatch(-1) }
+        threadSearchClose.setOnClickListener { closeSearch() }
+    }
+
+    private fun toggleSearch() {
+        if (binding.threadSearchHolder.isVisible()) {
+            closeSearch()
+        } else {
+            binding.threadSearchHolder.beVisible()
+            binding.threadSearchQuery.requestFocus()
+            showKeyboard(binding.threadSearchQuery)
+        }
+    }
+
+    private fun closeSearch() {
+        binding.threadSearchHolder.beGone()
+        binding.threadSearchQuery.setText("")
+        hideKeyboard()
+        searchMatches = emptyList()
+        currentMatchIndex = -1
+        getOrCreateThreadAdapter().highlightMessage(null)
+    }
+
+    private fun runSearch(query: String) {
+        if (query.isBlank()) {
+            searchMatches = emptyList()
+            currentMatchIndex = -1
+            binding.threadSearchCount.text = ""
+            getOrCreateThreadAdapter().highlightMessage(null)
+            return
+        }
+
+        ensureBackgroundThread {
+            // Newest first, so the first match is the one nearest the bottom of the conversation.
+            val matches = messagesDB.getNonRecycledThreadMessages(threadId)
+                .filter { it.body.contains(query, ignoreCase = true) }
+                .sortedByDescending { it.date }
+                .map { it.id }
+
+            runOnUiThread {
+                searchMatches = matches
+                currentMatchIndex = if (matches.isEmpty()) -1 else 0
+                updateSearchCount()
+                if (matches.isNotEmpty()) {
+                    jumpToMessage(matches.first())
+                    getOrCreateThreadAdapter().highlightMessage(matches.first())
+                } else {
+                    getOrCreateThreadAdapter().highlightMessage(null)
+                }
+            }
+        }
+    }
+
+    /** Positive walks back through the conversation, negative walks forward towards the latest. */
+    private fun stepToMatch(direction: Int) {
+        if (searchMatches.isEmpty()) {
+            return
+        }
+
+        currentMatchIndex =
+            (currentMatchIndex + direction).coerceIn(0, searchMatches.lastIndex)
+        updateSearchCount()
+
+        val messageId = searchMatches[currentMatchIndex]
+        jumpToMessage(messageId)
+        getOrCreateThreadAdapter().highlightMessage(messageId)
+    }
+
+    private fun updateSearchCount() {
+        binding.threadSearchCount.text = if (searchMatches.isEmpty()) {
+            getString(org.fossify.commons.R.string.no_items_found)
+        } else {
+            "${currentMatchIndex + 1}/${searchMatches.size}"
+        }
+    }
+
     private fun setupOptionsMenu() {
         binding.threadToolbar.setOnMenuItemClickListener { menuItem ->
             if (participants.isEmpty()) return@setOnMenuItemClickListener true
@@ -400,7 +488,14 @@ class ThreadActivity : SimpleActivity() {
     }
 
     private fun handleMenuItemAction(menuItem: MenuItem): Boolean {
-        when (menuItem.itemId) {
+        return handleConversationAction(menuItem.itemId) ||
+                handleParticipantAction(menuItem.itemId)
+    }
+
+    /** Actions on the conversation itself: what happens to these messages. */
+    private fun handleConversationAction(itemId: Int): Boolean {
+        when (itemId) {
+            R.id.search_in_conversation -> toggleSearch()
             R.id.block_number -> tryBlocking()
             R.id.delete -> askConfirmDelete()
             R.id.restore -> askConfirmRestoreAll()
@@ -408,11 +503,20 @@ class ThreadActivity : SimpleActivity() {
             R.id.unarchive -> unarchiveConversation()
             R.id.rename_conversation -> renameConversation()
             R.id.conversation_details -> launchConversationDetails(threadId)
+            R.id.mark_as_unread -> markAsUnread()
+            else -> return false
+        }
+
+        return true
+    }
+
+    /** Actions on the people in it: reaching them by some other means. */
+    private fun handleParticipantAction(itemId: Int): Boolean {
+        when (itemId) {
             R.id.add_number_to_contact -> addNumberToContact()
             R.id.copy_number -> copyNumberToClipboard()
             R.id.dial_number -> dialNumber()
             R.id.manage_people -> managePeople()
-            R.id.mark_as_unread -> markAsUnread()
             else -> return false
         }
 

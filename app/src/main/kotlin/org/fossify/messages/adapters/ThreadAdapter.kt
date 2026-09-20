@@ -34,6 +34,7 @@ import com.bumptech.glide.request.target.Target
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
+import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisible
@@ -119,6 +120,9 @@ class ThreadAdapter(
     /** The one message currently tapped open, showing its timestamp and selectable at a larger size. */
     private var expandedMessageId: Long? = null
 
+    /** The search match the user is standing on, tinted so the jump is obvious. */
+    private var highlightedMessageId: Long? = null
+
     companion object {
         private const val MAX_MEDIA_HEIGHT_RATIO = 3
         private const val SIM_BITS = 21
@@ -140,6 +144,9 @@ class ThreadAdapter(
         /** Status lines sit beneath the message and should never compete with it. */
         private const val STATUS_TEXT_SCALE = 0.8f
         private const val STATUS_ALPHA = 0.7f
+
+        /** Just enough tint to find the message, not so much that it obscures the text. */
+        private const val HIGHLIGHT_ALPHA = 0.25f
     }
 
     init {
@@ -410,6 +417,19 @@ class ThreadAdapter(
         }
     }
 
+    /** Marks the search match the user is currently standing on, so the jump lands somewhere visible. */
+    fun highlightMessage(messageId: Long?) {
+        val previous = highlightedMessageId
+        highlightedMessageId = messageId
+
+        listOfNotNull(previous, messageId).distinct().forEach { id ->
+            val position = currentList.indexOfFirst { (it as? Message)?.id == id }
+            if (position != -1) {
+                notifyItemChanged(position)
+            }
+        }
+    }
+
     /** Called when focus moves elsewhere, so an open message doesn't stay open behind the keyboard. */
     fun collapseExpanded() {
         val expanded = expandedMessageId ?: return
@@ -514,6 +534,7 @@ class ThreadAdapter(
         ItemMessageBinding.bind(view).apply {
             threadMessageHolder.isSelected = selectedKeys.contains(message.getSelectionKey())
             val isExpanded = message.id == expandedMessageId
+            val isHighlighted = message.id == highlightedMessageId
             val isEmojiOnly = message.body.isEmojiOnly() &&
                     message.body.emojiCount() <= MAX_ENLARGED_EMOJI
 
@@ -532,6 +553,10 @@ class ThreadAdapter(
                     holder.viewClicked(message)
                 }
             }
+
+            threadMessageHolder.setBackgroundColor(
+                if (isHighlighted) properPrimaryColor.adjustAlpha(HIGHLIGHT_ALPHA) else Color.TRANSPARENT
+            )
 
             threadMessageDetails.apply {
                 beVisibleIf(isExpanded)
