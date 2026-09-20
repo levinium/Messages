@@ -37,8 +37,18 @@ class MediaGridAdapter(
 ) {
     private val cornerRadius =
         activity.resources.getDimensionPixelSize(R.dimen.media_thumbnail_corner_radius)
-    private val outlineWidth =
-        activity.resources.getDimensionPixelSize(R.dimen.media_selection_outline_width)
+
+    private val selectionOverlay by lazy {
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            this.cornerRadius = this@MediaGridAdapter.cornerRadius.toFloat()
+            setColor(activity.getColor(R.color.media_selection_scrim))
+            setStroke(
+                activity.resources.getDimensionPixelSize(R.dimen.media_selection_outline_width),
+                properPrimaryColor
+            )
+        }
+    }
 
     init {
         setupDragListener(true)
@@ -87,19 +97,14 @@ class MediaGridAdapter(
         holder.bindView(item, allowSingleClick = true, allowLongClick = true) { itemView, _ ->
             ItemMediaGridBinding.bind(itemView).apply {
                 val isSelected = selectedKeys.contains(item.hashCode())
-                mediaGridScrim.beVisibleIf(isSelected)
                 mediaGridCheck.beVisibleIf(isSelected)
                 mediaGridPlay.beVisibleIf(item.mimetype.isVideoMimeType())
 
-                // A picture is busy enough that a dimmed corner check is easy to miss, so a
-                // selected one is ringed in the user's own colour as well.
-                mediaGridOutline.beVisibleIf(isSelected)
-                if (isSelected) {
-                    mediaGridCheck.applyColorFilter(properPrimaryColor)
-                    (mediaGridOutline.background as? GradientDrawable)?.mutate()?.let {
-                        (it as GradientDrawable).setStroke(outlineWidth, properPrimaryColor)
-                    }
-                }
+                // A picture is busy enough that a corner check alone is easy to miss, so a
+                // selected one is dimmed and ringed in the user's own colour. Both ride on the
+                // thumbnail's foreground, which is the only thing guaranteed to match its bounds.
+                mediaGridThumbnail.foreground = if (isSelected) selectionOverlay else null
+                mediaGridCheck.applyColorFilter(properPrimaryColor)
 
                 Glide.with(activity)
                     .load(item.uri)
