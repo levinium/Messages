@@ -6,7 +6,7 @@ import com.google.android.material.snackbar.Snackbar
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
 import org.fossify.messages.activities.SimpleActivity
-import org.fossify.messages.adapters.ConversationsAdapter
+import org.fossify.messages.adapters.BaseConversationsAdapter
 import org.fossify.messages.extensions.askDeleteConversation
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.findPasscodeThreadIds
@@ -23,9 +23,15 @@ import org.fossify.messages.models.Conversation
 class ConversationSwiper(
     private val activity: SimpleActivity,
     private val recyclerView: MyRecyclerView,
-    private val undoAnchor: View,
-    private val adapter: () -> ConversationsAdapter,
+    private val adapter: () -> BaseConversationsAdapter,
     private val onListChanged: () -> Unit,
+    private val undoAnchor: View? = null,
+    /**
+     * The conversations list takes these from the settings; the archive has its own pair, since
+     * archiving something that is already archived means nothing and putting it back does.
+     */
+    private val rightAction: () -> Int = { activity.config.swipeRightAction },
+    private val leftAction: () -> Int = { activity.config.swipeLeftAction },
 ) {
     private var helper: ItemTouchHelper? = null
     private var passcodeThreadIds = emptySet<Long>()
@@ -36,17 +42,14 @@ class ConversationSwiper(
         helper = null
         refreshPasscodeThreads()
 
-        val config = activity.config
-        if (config.swipeRightAction == SWIPE_ACTION_NONE &&
-            config.swipeLeftAction == SWIPE_ACTION_NONE
-        ) {
+        if (rightAction() == SWIPE_ACTION_NONE && leftAction() == SWIPE_ACTION_NONE) {
             return
         }
 
         val callback = ConversationSwipeCallback(
             activity = activity,
-            rightAction = config.swipeRightAction,
-            leftAction = config.swipeLeftAction,
+            rightAction = rightAction(),
+            leftAction = leftAction(),
             resolveAction = ::actionForRow,
             onSwipe = ::onSwiped,
         )
@@ -59,9 +62,8 @@ class ConversationSwiper(
      * the row has to say so while it is still moving rather than surprise you afterwards.
      */
     private fun actionForRow(position: Int, swipingRight: Boolean): Int {
-        val config = activity.config
-        val action = if (swipingRight) config.swipeRightAction else config.swipeLeftAction
-        if (action != SWIPE_ACTION_ARCHIVE || !config.deletePasscodeThreadsOnSwipe) {
+        val action = if (swipingRight) rightAction() else leftAction()
+        if (action != SWIPE_ACTION_ARCHIVE || !activity.config.deletePasscodeThreadsOnSwipe) {
             return action
         }
 
@@ -78,7 +80,9 @@ class ConversationSwiper(
     }
 
     private fun refreshPasscodeThreads() {
-        if (!activity.config.deletePasscodeThreadsOnSwipe) {
+        if (!activity.config.deletePasscodeThreadsOnSwipe ||
+            SWIPE_ACTION_ARCHIVE !in listOf(rightAction(), leftAction())
+        ) {
             passcodeThreadIds = emptySet()
             return
         }
@@ -101,7 +105,8 @@ class ConversationSwiper(
 
         when (action) {
             SWIPE_ACTION_TOGGLE_READ -> markRead(conversation)
-            SWIPE_ACTION_ARCHIVE -> archive(conversation)
+            SWIPE_ACTION_ARCHIVE -> setArchived(conversation, archived = true)
+            SWIPE_ACTION_UNARCHIVE -> setArchived(conversation, archived = false)
             SWIPE_ACTION_DELETE -> activity.askDeleteConversation(conversation) {
                 removeConversation(conversation)
             }
@@ -124,11 +129,18 @@ class ConversationSwiper(
         }
     }
 
-    private fun archive(conversation: Conversation) {
-        activity.setConversationArchived(conversation, archived = true) {
+    /** Either way the row leaves the list it is in, and either way it can be put back. */
+    private fun setArchived(conversation: Conversation, archived: Boolean) {
+        activity.setConversationArchived(conversation, archived) {
             removeConversation(conversation)
-            showUndoBar(R.string.conversation_archived) {
-                activity.setConversationArchived(conversation, archived = false) {
+            val message = if (archived) {
+                R.string.conversation_archived
+            } else {
+                R.string.conversation_unarchived
+            }
+
+            showUndoBar(message) {
+                activity.setConversationArchived(conversation, !archived) {
                     refreshConversations()
                 }
             }
@@ -152,7 +164,7 @@ class ConversationSwiper(
     /** A swipe is easy to make by accident, so it says what it did and offers to take it back. */
     private fun showUndoBar(message: Int, undo: () -> Unit) {
         Snackbar.make(recyclerView, activity.getString(message), Snackbar.LENGTH_LONG)
-            .setAnchorView(undoAnchor)
+            .apply { undoAnchor?.let { setAnchorView(it) } }
             .setAction(org.fossify.commons.R.string.undo) { undo() }
             .show()
     }

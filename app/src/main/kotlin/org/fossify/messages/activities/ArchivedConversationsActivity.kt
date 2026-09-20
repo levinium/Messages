@@ -19,6 +19,9 @@ import org.fossify.messages.databinding.ActivityArchivedConversationsBinding
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
 import org.fossify.messages.extensions.removeAllArchivedConversations
+import org.fossify.messages.helpers.ConversationSwiper
+import org.fossify.messages.helpers.SWIPE_ACTION_DELETE
+import org.fossify.messages.helpers.SWIPE_ACTION_UNARCHIVE
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.models.Conversation
@@ -30,6 +33,21 @@ import org.greenrobot.eventbus.ThreadMode
 class ArchivedConversationsActivity : SimpleActivity() {
     private var bus: EventBus? = null
     private val binding by viewBinding(ActivityArchivedConversationsBinding::inflate)
+
+    /**
+     * Fixed rather than configurable: the archive is where a conversation is either put back or
+     * got rid of, and there is nothing else here a swipe could usefully mean.
+     */
+    private val swiper by lazy {
+        ConversationSwiper(
+            activity = this,
+            recyclerView = binding.conversationsList,
+            adapter = ::getOrCreateConversationsAdapter,
+            onListChanged = { loadArchivedConversations() },
+            rightAction = { SWIPE_ACTION_UNARCHIVE },
+            leftAction = { SWIPE_ACTION_DELETE },
+        )
+    }
 
     @SuppressLint("InlinedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +67,7 @@ class ArchivedConversationsActivity : SimpleActivity() {
     override fun onResume() {
         super.onResume()
         setupTopAppBar(binding.archiveAppbar, NavigationIcon.Arrow)
+        swiper.refresh()
         loadArchivedConversations()
     }
 

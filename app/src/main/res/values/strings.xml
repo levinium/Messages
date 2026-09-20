@@ -23,6 +23,7 @@
     <string name="marked_as_read">Marked as read</string>
     <string name="marked_as_unread">Marked as unread</string>
     <string name="conversation_archived">Conversation archived</string>
+    <string name="conversation_unarchived">Conversation unarchived</string>
     <string name="swipe_actions">Swipe actions</string>
     <string name="swipe_right_action">Swiping a conversation right</string>
     <string name="swipe_left_action">Swiping a conversation left</string>

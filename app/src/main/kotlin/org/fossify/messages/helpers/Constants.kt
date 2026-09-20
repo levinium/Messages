@@ -65,6 +65,7 @@ const val SWIPE_ACTION_NONE = 0
 const val SWIPE_ACTION_TOGGLE_READ = 1
 const val SWIPE_ACTION_ARCHIVE = 2
 const val SWIPE_ACTION_DELETE = 3
+const val SWIPE_ACTION_UNARCHIVE = 4
 
 const val MEDIA_ITEMS = "media_items"
 const val MEDIA_START_INDEX = "media_start_index"

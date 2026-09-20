@@ -107,6 +107,7 @@ class ConversationSwipeCallback(
     private fun iconFor(action: Int) = when (action) {
         SWIPE_ACTION_DELETE -> org.fossify.commons.R.drawable.ic_delete_vector
         SWIPE_ACTION_ARCHIVE -> R.drawable.ic_archive_vector
+        SWIPE_ACTION_UNARCHIVE -> R.drawable.ic_unarchive_vector
         else -> R.drawable.ic_check_double_vector
     }
 

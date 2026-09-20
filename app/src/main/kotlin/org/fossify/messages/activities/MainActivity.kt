@@ -91,9 +91,9 @@ class MainActivity : SimpleActivity() {
         ConversationSwiper(
             activity = this,
             recyclerView = binding.conversationsList,
-            undoAnchor = binding.conversationsFab,
             adapter = ::getOrCreateConversationsAdapter,
             onListChanged = ::refreshMenuItems,
+            undoAnchor = binding.conversationsFab,
         )
     }
 
