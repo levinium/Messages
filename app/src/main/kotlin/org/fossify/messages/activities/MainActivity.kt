@@ -25,7 +25,6 @@ import org.fossify.commons.extensions.checkAppSideloading
 import org.fossify.commons.extensions.checkWhatsNew
 import org.fossify.commons.extensions.convertToBitmap
 import org.fossify.commons.extensions.fadeIn
-import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.getProperPrimaryColor
@@ -66,6 +65,7 @@ import org.fossify.messages.extensions.messagesDB
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
+import org.fossify.messages.helpers.formatConversationDate
 import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
@@ -550,11 +550,7 @@ class MainActivity : SimpleActivity() {
     ) {
         val searchResults = ArrayList<SearchResult>()
         conversations.forEach { conversation ->
-            val date = (conversation.date * 1000L).formatDateOrTime(
-                context = this,
-                hideTimeOnOtherDays = true,
-                showCurrentYear = true
-            )
+            val date = (conversation.date * 1000L).formatConversationDate(this)
 
             val searchResult = SearchResult(
                 messageId = -1,
@@ -574,11 +570,7 @@ class MainActivity : SimpleActivity() {
                 recipient = TextUtils.join(", ", participantNames)
             }
 
-            val date = (message.date * 1000L).formatDateOrTime(
-                context = this,
-                hideTimeOnOtherDays = true,
-                showCurrentYear = true
-            )
+            val date = (message.date * 1000L).formatConversationDate(this)
 
             val searchResult = SearchResult(
                 messageId = message.id,

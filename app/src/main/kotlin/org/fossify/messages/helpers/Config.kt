@@ -71,6 +71,11 @@ class Config(context: Context) : BaseConfig(context) {
         set(alertForSkippedNotifications) = prefs.edit()
             .putBoolean(ALERT_FOR_SKIPPED_NOTIFICATIONS, alertForSkippedNotifications).apply()
 
+    var useVerboseDateFormat: Boolean
+        get() = prefs.getBoolean(USE_VERBOSE_DATE_FORMAT, true)
+        set(useVerboseDateFormat) = prefs.edit()
+            .putBoolean(USE_VERBOSE_DATE_FORMAT, useVerboseDateFormat).apply()
+
     var mmsFileSizeLimit: Long
         get() = prefs.getLong(MMS_FILE_SIZE_LIMIT, FILE_SIZE_200_KB)
         set(mmsFileSizeLimit) = prefs.edit().putLong(MMS_FILE_SIZE_LIMIT, mmsFileSizeLimit).apply()

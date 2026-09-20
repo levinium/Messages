@@ -749,6 +749,7 @@ class ThreadActivity : SimpleActivity() {
     private fun handleItemClick(any: Any) {
         when {
             any is Message && any.isScheduled -> showScheduledMessageInfo(any)
+            any is Message -> getOrCreateThreadAdapter().toggleExpanded(any)
             any is ThreadError -> {
                 binding.messageHolder.threadTypeMessage.setText(any.messageText)
                 messageToResend = any.messageId
@@ -942,6 +943,14 @@ class ThreadActivity : SimpleActivity() {
             }
 
             threadSendMessage.isClickable = false
+            // An open message stays open until attention moves on, otherwise it would sit
+            // enlarged behind the keyboard while a reply is being typed.
+            threadTypeMessage.setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    getOrCreateThreadAdapter().collapseExpanded()
+                }
+            }
+
             threadTypeMessage.onTextChangeListener {
                 messageToResend = null
                 checkSendMessageAvailability()

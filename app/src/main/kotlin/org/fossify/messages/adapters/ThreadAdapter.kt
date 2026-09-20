@@ -5,6 +5,10 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
+import android.text.Spanned
+import android.text.style.URLSpan
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.util.TypedValue
 import android.view.Menu
 import android.view.View
@@ -29,6 +33,7 @@ import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
 import org.fossify.commons.dialogs.ConfirmationDialog
+import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisible
@@ -39,13 +44,16 @@ import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getProperPrimaryColor
 import org.fossify.commons.extensions.getTextSize
 import org.fossify.commons.extensions.getTimeFormat
+import org.fossify.commons.extensions.launchViewIntent
 import org.fossify.commons.extensions.shareTextIntent
 import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.usableScreenSize
 import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.SimpleContactsHelper
+import org.fossify.commons.models.RadioItem
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
+import org.fossify.commons.views.MyTextView
 import org.fossify.messages.R
 import org.fossify.messages.activities.NewConversationActivity
 import org.fossify.messages.activities.SimpleActivity
@@ -71,13 +79,18 @@ import org.fossify.messages.extensions.launchViewIntent
 import org.fossify.messages.extensions.startContactDetailsIntent
 import org.fossify.messages.extensions.subscriptionManagerCompat
 import org.fossify.messages.helpers.EXTRA_VCARD_URI
+import org.fossify.messages.helpers.MAX_ENLARGED_EMOJI
 import org.fossify.messages.helpers.THREAD_DATE_TIME
 import org.fossify.messages.helpers.THREAD_RECEIVED_MESSAGE
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE_ERROR
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE_SENDING
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE_SENT
+import org.fossify.messages.helpers.emojiCount
+import org.fossify.messages.helpers.formatMessageDateTime
+import org.fossify.messages.helpers.formatMessageDateTimeCompact
 import org.fossify.messages.helpers.generateStableId
+import org.fossify.messages.helpers.isEmojiOnly
 import org.fossify.messages.helpers.setupDocumentPreview
 import org.fossify.messages.helpers.setupVCardPreview
 import org.fossify.messages.models.Attachment
@@ -102,10 +115,26 @@ class ThreadAdapter(
     private val hasMultipleSIMCards = (activity.subscriptionManagerCompat().activeSubscriptionInfoList?.size ?: 0) > 1
     private val maxChatBubbleWidth = (activity.usableScreenSize.x * 0.8f).toInt()
 
+    /** The one message currently tapped open, showing its timestamp and selectable at a larger size. */
+    private var expandedMessageId: Long? = null
+
     companion object {
         private const val MAX_MEDIA_HEIGHT_RATIO = 3
         private const val SIM_BITS = 21
         private const val SIM_MASK = (1L shl SIM_BITS) - 1
+
+        /** How much a tapped message grows, enough to read comfortably without reflowing the thread. */
+        private const val READING_SCALE = 1.25f
+
+        /** A handful of emoji on their own get the big treatment; a wall of them stays readable. */
+        private const val EMOJI_SCALE = 2.0f
+
+        /** The timestamp under an open message, deliberately quieter than the message itself. */
+        private const val SMALL_TEXT_SCALE = 0.8f
+
+        private const val LINK_COPY = 0
+        private const val LINK_OPEN = 1
+        private const val LINK_SHARE = 2
     }
 
     init {
@@ -363,20 +392,147 @@ class ThreadAdapter(
         }
     }
 
+    /** Tapping a message opens it: bigger text, its timestamp, and selectable for partial copying. */
+    fun toggleExpanded(message: Message) {
+        val previouslyExpanded = expandedMessageId
+        expandedMessageId = if (previouslyExpanded == message.id) null else message.id
+
+        listOfNotNull(previouslyExpanded, expandedMessageId).distinct().forEach { id ->
+            val position = currentList.indexOfFirst { (it as? Message)?.id == id }
+            if (position != -1) {
+                notifyItemChanged(position)
+            }
+        }
+    }
+
+    /** Called when focus moves elsewhere, so an open message doesn't stay open behind the keyboard. */
+    fun collapseExpanded() {
+        val expanded = expandedMessageId ?: return
+        expandedMessageId = null
+        val position = currentList.indexOfFirst { (it as? Message)?.id == expanded }
+        if (position != -1) {
+            notifyItemChanged(position)
+        }
+    }
+
+    private fun bodyTextSize(isExpanded: Boolean, isEmojiOnly: Boolean) = when {
+        isEmojiOnly -> fontSize * EMOJI_SCALE
+        isExpanded -> fontSize * READING_SCALE
+        else -> fontSize
+    }
+
+    private fun Message.formatSentOrReceivedAt(): String {
+        return DateTime(date * 1000L)
+            .let { it.millis.formatMessageDateTime(activity) }
+    }
+
+    /**
+     * Long press means two different things depending on whether the message is open.
+     *
+     * Closed, it starts multi-select, as it always has. Open, the text is selectable, so a long
+     * press belongs to Android's own selection handles - except on a link, where copying the link
+     * itself is almost always what was wanted.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupBodyGestures(
+        body: MyTextView,
+        isExpanded: Boolean,
+        message: Message,
+        holder: ViewHolder,
+    ) {
+        if (!isExpanded) {
+            body.setOnTouchListener(null)
+            body.setOnLongClickListener {
+                holder.viewLongClicked()
+                true
+            }
+            return
+        }
+
+        // Selectable text routes touches through Android's editor, which never calls
+        // OnClickListener, so the tap that closes the message has to be spotted here instead.
+        val gestureDetector = GestureDetector(
+            activity,
+            object : GestureDetector.SimpleOnGestureListener() {
+                override fun onSingleTapUp(event: MotionEvent): Boolean {
+                    holder.viewClicked(message)
+                    return false
+                }
+
+                override fun onLongPress(event: MotionEvent) {
+                    val url = body.urlAt(event.x, event.y) ?: return
+                    showLinkOptions(url)
+                }
+            }
+        )
+
+        var touchX = 0f
+        var touchY = 0f
+        body.setOnTouchListener { _, event ->
+            touchX = event.x
+            touchY = event.y
+            gestureDetector.onTouchEvent(event)
+            false // the editor still gets the event, so selection handles keep working
+        }
+
+        body.setOnLongClickListener {
+            // Swallow the long press only on a link, where the menu above has already opened.
+            body.urlAt(touchX, touchY) != null
+        }
+    }
+
+    private fun MyTextView.urlAt(x: Float, y: Float): String? {
+        val spanned = text as? Spanned ?: return null
+        val textLayout = layout ?: return null
+        val line = textLayout.getLineForVertical((y - totalPaddingTop + scrollY).toInt())
+        val offset = textLayout.getOffsetForHorizontal(line, x - totalPaddingLeft + scrollX)
+        return spanned.getSpans(offset, offset, URLSpan::class.java).firstOrNull()?.url
+    }
+
+    private fun showLinkOptions(url: String) {
+        val items = arrayListOf(
+            RadioItem(LINK_COPY, activity.getString(R.string.copy_link)),
+            RadioItem(LINK_OPEN, activity.getString(R.string.open_link)),
+            RadioItem(LINK_SHARE, activity.getString(org.fossify.commons.R.string.share)),
+        )
+
+        RadioGroupDialog(activity, items) { chosen ->
+            when (chosen as Int) {
+                LINK_COPY -> activity.copyToClipboard(url)
+                LINK_OPEN -> activity.launchViewIntent(url)
+                LINK_SHARE -> activity.shareTextIntent(url)
+            }
+        }
+    }
+
     private fun setupView(holder: ViewHolder, view: View, message: Message) {
         ItemMessageBinding.bind(view).apply {
             threadMessageHolder.isSelected = selectedKeys.contains(message.getSelectionKey())
+            val isExpanded = message.id == expandedMessageId
+            val isEmojiOnly = message.body.isEmojiOnly() &&
+                    message.body.emojiCount() <= MAX_ENLARGED_EMOJI
+
             threadMessageBody.apply {
                 text = message.body
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, bodyTextSize(isExpanded, isEmojiOnly))
                 beVisibleIf(message.body.isNotEmpty())
-                setOnLongClickListener {
-                    holder.viewLongClicked()
-                    true
-                }
+
+                // Selectable text hands the user Android's own selection handles, which is how
+                // copying part of a message works. It is only on while expanded, because a
+                // selectable view swallows the long press that starts multi-select.
+                setTextIsSelectable(isExpanded)
+                setupBodyGestures(this, isExpanded, message, holder)
 
                 setOnClickListener {
                     holder.viewClicked(message)
+                }
+            }
+
+            threadMessageDetails.apply {
+                beVisibleIf(isExpanded)
+                if (isExpanded) {
+                    text = message.formatSentOrReceivedAt()
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * SMALL_TEXT_SCALE)
                 }
             }
 
@@ -586,11 +742,7 @@ class ThreadAdapter(
     private fun setupDateTime(view: View, dateTime: ThreadDateTime) {
         ItemThreadDateTimeBinding.bind(view).apply {
             threadDateTime.apply {
-                text = (dateTime.date * 1000L).formatDateOrTime(
-                    context = context,
-                    hideTimeOnOtherDays = false,
-                    showCurrentYear = false
-                )
+                text = (dateTime.date * 1000L).formatMessageDateTimeCompact(context)
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
             }
             threadDateTime.setTextColor(textColor)
