@@ -148,6 +148,13 @@
             android:parentActivityName=".activities.SettingsActivity" />
 
         <activity
+            android:name=".activities.MediaGridActivity"
+            android:configChanges="orientation|screenSize"
+            android:exported="false"
+            android:label="@string/view_media"
+            android:parentActivityName=".activities.ThreadActivity" />
+
+        <activity
             android:name=".activities.MediaViewerActivity"
             android:configChanges="orientation|screenSize"
             android:exported="false"

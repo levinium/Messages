@@ -4,4 +4,7 @@
     <!-- A message that failed to send. Readable on both the light and the dark background. -->
     <color name="message_error">#E53935</color>
 
+    <!-- Dims a picture in the gallery grid while it is selected, so the check mark reads. -->
+    <color name="media_selection_scrim">#80000000</color>
+
 </resources>

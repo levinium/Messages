@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/media_grid_item_holder"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:foreground="?attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/media_grid_thumbnail"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="centerCrop"
+        app:layout_constraintDimensionRatio="H,1:1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription"
+        tools:src="@drawable/ic_image_vector" />
+
+    <View
+        android:id="@+id/media_grid_scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/media_selection_scrim"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/media_grid_thumbnail"
+        app:layout_constraintEnd_toEndOf="@id/media_grid_thumbnail"
+        app:layout_constraintStart_toStartOf="@id/media_grid_thumbnail"
+        app:layout_constraintTop_toTopOf="@id/media_grid_thumbnail"
+        tools:visibility="visible" />
+
+    <ImageView
+        android:id="@+id/media_grid_play"
+        android:layout_width="@dimen/normal_icon_size"
+        android:layout_height="@dimen/normal_icon_size"
+        android:src="@drawable/ic_vector_play_circle_outline"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/media_grid_thumbnail"
+        app:layout_constraintEnd_toEndOf="@id/media_grid_thumbnail"
+        app:layout_constraintStart_toStartOf="@id/media_grid_thumbnail"
+        app:layout_constraintTop_toTopOf="@id/media_grid_thumbnail"
+        tools:ignore="ContentDescription"
+        tools:visibility="visible" />
+
+    <ImageView
+        android:id="@+id/media_grid_check"
+        android:layout_width="@dimen/normal_icon_size"
+        android:layout_height="@dimen/normal_icon_size"
+        android:layout_margin="@dimen/small_margin"
+        android:src="@drawable/ic_check_circle_vector"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/media_grid_thumbnail"
+        app:layout_constraintTop_toTopOf="@id/media_grid_thumbnail"
+        tools:ignore="ContentDescription"
+        tools:visibility="visible" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

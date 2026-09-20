@@ -17,6 +17,7 @@
     <ID>EmptyFunctionBlock:BaseConversationsAdapter.kt$BaseConversationsAdapter${}</ID>
     <ID>EmptyFunctionBlock:ContactsAdapter.kt$ContactsAdapter${}</ID>
     <ID>EmptyFunctionBlock:ManageBlockedKeywordsAdapter.kt$ManageBlockedKeywordsAdapter${}</ID>
+    <ID>EmptyFunctionBlock:MediaGridAdapter.kt$MediaGridAdapter${}</ID>
     <ID>EmptyFunctionBlock:RecycleBinConversationsAdapter.kt$RecycleBinConversationsAdapter${}</ID>
     <ID>EmptyFunctionBlock:SearchResultsAdapter.kt$SearchResultsAdapter${}</ID>
     <ID>EmptyFunctionBlock:ThreadAdapter.kt$ThreadAdapter${}</ID>
@@ -205,6 +206,8 @@
     <ID>TooManyFunctions:MainActivity.kt$MainActivity : SimpleActivity</ID>
     <ID>TooManyFunctions:ManageBlockedKeywordsActivity.kt$ManageBlockedKeywordsActivity : SimpleActivityRefreshRecyclerViewListener</ID>
     <ID>TooManyFunctions:ManageBlockedKeywordsAdapter.kt$ManageBlockedKeywordsAdapter : MyRecyclerViewAdapter</ID>
+    <ID>TooManyFunctions:MediaGridActivity.kt$MediaGridActivity : SimpleActivity</ID>
+    <ID>TooManyFunctions:MediaGridAdapter.kt$MediaGridAdapter : MyRecyclerViewListAdapter</ID>
     <ID>TooManyFunctions:MessagesDao.kt$MessagesDao</ID>
     <ID>TooManyFunctions:MessagesWriter.kt$MessagesWriter</ID>
     <ID>TooManyFunctions:RecycleBinConversationsActivity.kt$RecycleBinConversationsActivity : SimpleActivity</ID>

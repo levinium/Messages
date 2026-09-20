@@ -155,7 +155,6 @@ import org.fossify.messages.extensions.shouldUnarchive
 import org.fossify.messages.extensions.showWithAnimation
 import org.fossify.messages.extensions.subscriptionManagerCompat
 import org.fossify.messages.extensions.toArrayList
-import org.fossify.messages.extensions.openMediaViewer
 import org.fossify.messages.extensions.toSortedMessages
 import org.fossify.messages.extensions.updateConversationArchivedStatus
 import org.fossify.messages.extensions.updateLastConversationMessage
@@ -179,6 +178,7 @@ import org.fossify.messages.helpers.THREAD_ATTACHMENT_URIS
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_NUMBER
 import org.fossify.messages.helpers.THREAD_TEXT
+import org.fossify.messages.helpers.MEDIA_ITEMS
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.helpers.isAutomatedThread
@@ -420,13 +420,13 @@ class ThreadActivity : SimpleActivity() {
      * Searching inside one conversation, rather than the whole app. Matches come from the messages
      * cached for this thread, which is everything the app has synced for it.
      */
-    /**
-     * The gallery of a conversation. Opens on the newest picture, since that is the one you came
-     * looking for; the rest of the thread is a swipe away.
-     */
+    /** The gallery of a conversation: everything it ever sent or received, in one grid. */
     private fun openThreadMedia() {
-        val media = threadMedia()
-        openMediaViewer(media, media.lastIndex)
+        Intent(this, MediaGridActivity::class.java).apply {
+            putParcelableArrayListExtra(MEDIA_ITEMS, ArrayList(threadMedia()))
+            putExtra(THREAD_TITLE, binding.threadToolbar.title?.toString())
+            startActivity(this)
+        }
     }
 
     private fun threadMedia() = messages.toSortedMessages().toMediaItems()
