@@ -2,15 +2,13 @@
 
 # Levinium Messages
 
-**An SMS app that doesn't notify you about texts you are already reading.**
+**An SMS app that stays out of your way: no notifications for messages you are already reading, a
+gallery for what a conversation has sent you, and dates you can read at a glance.**
 
-This is an unofficial fork of [Fossify Messages](https://github.com/FossifyOrg/Messages) with two
-fixes: incoming messages stop raising notifications you would only have to dismiss, and a message
-that arrives while you are at the bottom of a conversation actually scrolls into view.
-
-It is not a Fossify product and is not affiliated with, endorsed by, or supported by the Fossify
-project. Please report problems with this fork [here](https://github.com/levinium/Messages/issues)
-rather than to them.
+An unofficial fork of [Fossify Messages](https://github.com/FossifyOrg/Messages), keeping everything
+that app does and adding the things this one needed. It is not a Fossify product and is not
+affiliated with, endorsed by, or supported by the Fossify project. Please report problems with this
+fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 [![download](https://img.shields.io/github/v/release/levinium/Messages?label=download&sort=semver)](https://github.com/levinium/Messages/releases/latest)
 [![downloads](https://img.shields.io/github/downloads/levinium/Messages/total)](https://github.com/levinium/Messages/releases)
@@ -21,7 +19,7 @@ rather than to them.
 
 ## Download
 
-[**LeviniumMessages-1.9.1.apk**](https://github.com/levinium/Messages/releases/latest) — 6.3 MB
+[**LeviniumMessages-1.9.1-levinium.4.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
 
 Your browser or file manager will warn you before installing an app from outside an app store, and
 Android will ask you to allow installs from that app once. That is expected for any APK installed by
@@ -49,26 +47,97 @@ The alert the notification would have played is **played in its place**, so noth
 silently. It goes through the conversation's own notification channel and honors Do Not Disturb and
 the ringer mode, so a muted conversation or a silenced phone stays quiet.
 
-All of it is optional, under **Settings → Notifications**, defaulting to the behavior above. Turning
-the first switch off restores upstream behavior for an open conversation completely.
+A message that arrives while you are sitting at the bottom of a conversation also **scrolls into
+view** rather than landing half cut off below the fold.
 
 <img src="docs/screenshots/notification-settings.png" width="320" alt="The three notification switches in Settings">
 
-## New messages scroll into view
+## Dates you can read
 
-Receiving a message while sitting at the bottom of a conversation used to leave it half cut off
-below the fold, needing a manual scroll to read what had just arrived.
+`09/19` tells you nothing about which of the two numbers is the month. Dates read as a person would
+say them — **Wed · Sep 19 · 8:03 PM** — throughout the app: on the separators inside a conversation,
+in the list, under an opened message and in the gallery.
 
-Two bugs sat in the same block upstream. The "is the user at the bottom" test required the last item
-to be exactly one position below the last visible one, but when you really are at the bottom that
-difference is zero, so the check failed in exactly the case it existed for. And when it did fire, it
-scrolled to the last index of the *previous* list, which is the message before the one that arrived.
+The year is dropped while it is still the current one, and today and yesterday are named rather than
+dated. Both of those, and the spelled-out format itself, can be turned off in Settings.
 
-<img src="docs/screenshots/conversation.png" width="320" alt="A conversation">
+## Tap a message to read it
+
+Tapping a message opens it: larger text, its timestamp underneath, and the text selectable so you
+can copy part of it rather than the whole thing. Tapping it again closes it.
+
+Long pressing a link offers to copy, open or share it. Messages that are nothing but emoji are drawn
+large, the way every other messaging app draws them.
+
+<img src="docs/screenshots/reading-mode.png" width="320" alt="A message opened to show its timestamp">
+
+## Pictures stay in the app
+
+Tapping a picture used to hand it to whatever other app claimed the file type, which loses the
+conversation you were in. It opens in the app instead, with pinch and double-tap zoom, video
+playback, and a swipe sideways through everything else the conversation holds.
+
+<img src="docs/screenshots/media-viewer.png" width="320" alt="A picture open in the viewer, titled with when it was sent">
+
+**View media** in the conversation's menu opens all of it as a grid, dated as you scroll. Select one
+or several to share, save, copy or open them — the things people do with pictures from a
+conversation are rarely done one at a time.
+
+<img src="docs/screenshots/gallery.png" width="320" alt="The gallery grid with a picture selected">
+
+## Swipe a conversation to deal with it
+
+Filing something away meant long pressing it, waiting for the action bar and finding the right icon.
+A swipe does it: **right marks read or unread, left archives**, and either direction can be set to
+any of those, to delete, or to nothing at all.
+
+The row carries the colour and icon of what is coming while it moves, so the gesture says what it
+will do before you finish it. Afterwards a bar offers to undo it. In the archive the pair is fixed
+and obvious: swipe right to put a conversation back, left to be rid of it.
+
+<img src="docs/screenshots/swipe-actions.png" width="320" alt="A conversation part way through a swipe, showing the mark-read icon">
+
+## Passcode conversations are treated as what they are
+
+A conversation that only ever delivered verification codes is not a conversation. The app recognises
+one — nothing ever sent to it, not a saved contact, and mostly codes — and treats it accordingly: it
+is deleted rather than archived (it asks first, and shows the delete icon while you swipe), and its
+toolbar drops the call and search buttons for a delete button, since nobody rings a passcode.
+
+<img src="docs/screenshots/passcode-swipe.png" width="320" alt="A passcode conversation being swiped, showing the delete icon">
+
+## Reporting spam, honestly
+
+There is no API to report a message as spam — not on Android, not to any service a messaging app can
+reach. What does exist is **7726** (SPAM), which the GSMA reserves so a carrier can be told about a
+sender. The menu explains that, then opens a conversation with 7726 carrying the offending message,
+ready for you to send. Nothing is sent without you pressing send.
+
+**Reply STOP** sits beside it, shown only for short codes. A legitimate service is obliged to honour
+it; anybody else just learns that a person is reading what they send, which the app says before it
+puts STOP in the message box.
+
+<img src="docs/screenshots/report-spam.png" width="320" alt="The report spam dialog">
+
+## Smaller things
+
+- **Search inside a conversation** from the toolbar, over everything the app has stored for it
+  rather than only the part already on screen. The arrows wrap around at either end.
+- **Failed messages say so and offer RETRY**, which resends that message in place instead of
+  dropping its text back into the box for you to send again.
+- **Archiving moved to the overflow**, where the other whole-conversation actions live; it sat one
+  mis-tap away from the call button.
+- **Attachments are no longer clipped** at the right edge of a conversation.
+
+## Settings
+
+Everything above that could sensibly be a choice is one, defaulting to the behaviour described here.
+
+<img src="docs/screenshots/settings.png" width="320" alt="The swipe action settings">
 
 ## Upstream
 
-Both fixes are reported upstream, and if they land there this fork stops having a reason to exist:
+The two original fixes are reported upstream:
 
 - [FossifyOrg/Messages#877](https://github.com/FossifyOrg/Messages/issues/877) — notifications for
   messages you are already reading
@@ -82,6 +151,7 @@ Requires JDK 17 or newer and the Android SDK (compileSdk 36).
 ```sh
 ./gradlew assembleFossDebug      # debug build, installs alongside as .debug
 ./gradlew assembleFossRelease    # release build; needs keystore.properties, see app/build.gradle.kts
+./gradlew detekt lintFossDebug testFossDebugUnitTest
 ```
 
 Two things about this fork are deliberate and worth knowing before changing them. The Kotlin and
