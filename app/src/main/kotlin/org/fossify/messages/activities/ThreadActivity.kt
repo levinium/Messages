@@ -155,6 +155,7 @@ import org.fossify.messages.extensions.shouldUnarchive
 import org.fossify.messages.extensions.showWithAnimation
 import org.fossify.messages.extensions.subscriptionManagerCompat
 import org.fossify.messages.extensions.toArrayList
+import org.fossify.messages.extensions.openMediaViewer
 import org.fossify.messages.extensions.toSortedMessages
 import org.fossify.messages.extensions.updateConversationArchivedStatus
 import org.fossify.messages.extensions.updateLastConversationMessage
@@ -201,6 +202,7 @@ import org.fossify.messages.models.ThreadItem.ThreadDateTime
 import org.fossify.messages.models.ThreadItem.ThreadError
 import org.fossify.messages.models.ThreadItem.ThreadSending
 import org.fossify.messages.models.ThreadItem.ThreadSent
+import org.fossify.messages.models.toMediaItems
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -295,6 +297,7 @@ class ThreadActivity : SimpleActivity() {
             navigationIcon = NavigationIcon.Arrow,
             topBarColor = getProperBackgroundColor()
         )
+        styleSearchBar()
 
         isActivityVisible = true
         if (!isRecycleBin) {
@@ -402,6 +405,7 @@ class ThreadActivity : SimpleActivity() {
                 participants.size == 1 && !isSpecialNumber() && !isRecycleBin &&
                         !isAutomatedThread
             findItem(R.id.manage_people).isVisible = !isSpecialNumber() && !isRecycleBin
+            findItem(R.id.view_media).isVisible = threadMedia().isNotEmpty()
             findItem(R.id.mark_as_unread).isVisible = threadItems.isNotEmpty() && !isRecycleBin
 
             // allow saving number in cases when we don't have it stored yet
@@ -416,6 +420,28 @@ class ThreadActivity : SimpleActivity() {
      * Searching inside one conversation, rather than the whole app. Matches come from the messages
      * cached for this thread, which is everything the app has synced for it.
      */
+    /**
+     * The gallery of a conversation. Opens on the newest picture, since that is the one you came
+     * looking for; the rest of the thread is a swipe away.
+     */
+    private fun openThreadMedia() {
+        val media = threadMedia()
+        openMediaViewer(media, media.lastIndex)
+    }
+
+    private fun threadMedia() = messages.toSortedMessages().toMediaItems()
+
+    /** The search bar is ours, so it has to be painted with the user's theme like everything else. */
+    private fun styleSearchBar() = binding.apply {
+        threadSearchHolder.setBackgroundColor(getProperBackgroundColor())
+        updateTextColors(threadSearchHolder)
+
+        val textColor = getProperTextColor()
+        arrayOf(threadSearchPrevious, threadSearchNext, threadSearchClose).forEach {
+            it.applyColorFilter(textColor)
+        }
+    }
+
     private fun setupSearch() = binding.apply {
         threadSearchQuery.onTextChangeListener { query -> runSearch(query) }
 
@@ -512,6 +538,7 @@ class ThreadActivity : SimpleActivity() {
     private fun handleConversationAction(itemId: Int): Boolean {
         when (itemId) {
             R.id.search_in_conversation -> toggleSearch()
+            R.id.view_media -> openThreadMedia()
             R.id.block_number -> tryBlocking()
             R.id.delete -> askConfirmDelete()
             R.id.restore -> askConfirmRestoreAll()

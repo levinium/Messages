@@ -20,7 +20,11 @@ import org.fossify.commons.helpers.SimpleContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.models.SimpleContact
 import org.fossify.messages.activities.ConversationDetailsActivity
+import org.fossify.messages.activities.MediaViewerActivity
+import org.fossify.messages.helpers.MEDIA_ITEMS
+import org.fossify.messages.helpers.MEDIA_START_INDEX
 import org.fossify.messages.helpers.THREAD_ID
+import org.fossify.messages.models.MediaItem
 import java.util.Locale
 
 fun BaseSimpleActivity.dialNumber(phoneNumber: String, callback: (() -> Unit)? = null) {
@@ -61,6 +65,19 @@ fun Activity.launchViewIntent(uri: Uri, mimetype: String, filename: String) {
         } catch (e: Exception) {
             showErrorToast(e)
         }
+    }
+}
+
+fun Activity.openMediaViewer(items: List<MediaItem>, startIndex: Int) {
+    if (items.isEmpty()) {
+        toast(org.fossify.commons.R.string.no_items_found)
+        return
+    }
+
+    Intent(this, MediaViewerActivity::class.java).apply {
+        putParcelableArrayListExtra(MEDIA_ITEMS, ArrayList(items))
+        putExtra(MEDIA_START_INDEX, startIndex.coerceIn(items.indices))
+        startActivity(this)
     }
 }
 

@@ -56,7 +56,6 @@ import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.commons.views.MyTextView
 import org.fossify.messages.R
-import org.fossify.messages.activities.MediaViewerActivity
 import org.fossify.messages.activities.NewConversationActivity
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.activities.ThreadActivity
@@ -78,12 +77,11 @@ import org.fossify.messages.extensions.isImageMimeType
 import org.fossify.messages.extensions.isVCardMimeType
 import org.fossify.messages.extensions.isVideoMimeType
 import org.fossify.messages.extensions.launchViewIntent
+import org.fossify.messages.extensions.openMediaViewer
 import org.fossify.messages.extensions.startContactDetailsIntent
 import org.fossify.messages.extensions.subscriptionManagerCompat
 import org.fossify.messages.helpers.EXTRA_VCARD_URI
 import org.fossify.messages.helpers.MAX_ENLARGED_EMOJI
-import org.fossify.messages.helpers.MEDIA_ITEMS
-import org.fossify.messages.helpers.MEDIA_START_INDEX
 import org.fossify.messages.helpers.THREAD_DATE_TIME
 import org.fossify.messages.helpers.THREAD_RECEIVED_MESSAGE
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE
@@ -98,13 +96,13 @@ import org.fossify.messages.helpers.isEmojiOnly
 import org.fossify.messages.helpers.setupDocumentPreview
 import org.fossify.messages.helpers.setupVCardPreview
 import org.fossify.messages.models.Attachment
-import org.fossify.messages.models.MediaItem
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.ThreadItem
 import org.fossify.messages.models.ThreadItem.ThreadDateTime
 import org.fossify.messages.models.ThreadItem.ThreadError
 import org.fossify.messages.models.ThreadItem.ThreadSending
 import org.fossify.messages.models.ThreadItem.ThreadSent
+import org.fossify.messages.models.toMediaItems
 import org.joda.time.DateTime
 
 class ThreadAdapter(
@@ -757,26 +755,10 @@ class ThreadAdapter(
      * conversation, so swiping sideways walks the thread's media instead of dead-ending.
      */
     private fun openInMediaViewer(tapped: Attachment) {
-        val media = currentList
-            .filterIsInstance<Message>()
-            .flatMap { it.attachment?.attachments.orEmpty() }
-            .filter { it.mimetype.isImageMimeType() || it.mimetype.isVideoMimeType() }
-
-        val items = media.map {
-            MediaItem(
-                uriString = it.getUri().toString(),
-                mimetype = it.mimetype,
-                filename = it.filename,
-            )
-        }
-
-        val startIndex = media.indexOfFirst { it.getUri() == tapped.getUri() }.coerceAtLeast(0)
-        activity.startActivity(
-            Intent(activity, MediaViewerActivity::class.java).apply {
-                putParcelableArrayListExtra(MEDIA_ITEMS, ArrayList(items))
-                putExtra(MEDIA_START_INDEX, startIndex)
-            }
-        )
+        val items = currentList.filterIsInstance<Message>().toMediaItems()
+        val tappedUri = tapped.getUri().toString()
+        val startIndex = items.indexOfFirst { it.uriString == tappedUri }.coerceAtLeast(0)
+        activity.openMediaViewer(items, startIndex)
     }
 
     private fun setupVCardView(holder: ViewHolder, parent: LinearLayout, message: Message, attachment: Attachment) {

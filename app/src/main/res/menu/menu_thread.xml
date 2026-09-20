@@ -15,6 +15,11 @@
         android:showAsAction="always"
         android:title="@string/search_in_conversation"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/view_media"
+        android:showAsAction="never"
+        android:title="@string/view_media"
+        app:showAsAction="never" />
     <!-- Archiving is a whole-conversation action and sat one mis-tap away from the call button,
          so it lives in the overflow with the other conversation-level actions now. -->
     <item
