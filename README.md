@@ -19,7 +19,7 @@ fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 ## Download
 
-[**LeviniumMessages-2.0.0.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+[**LeviniumMessages-2.1.0.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
 
 Built on Fossify Messages 1.9.1.
 
@@ -31,7 +31,7 @@ To actually receive messages, set it as your default SMS app: **Settings → App
 app**. Your texts live in Android's system message store rather than inside the app, so switching
 between messaging apps does not move or lose them.
 
-It installs as its own app (`org.fossify.messages.levinium`) alongside Fossify Messages, so you can
+It installs as its own app (`com.levinium.messages`) alongside Fossify Messages, so you can
 try it without giving anything up. Releases are signed with a personal key, and Android will not
 install an update signed with a different key over an existing install, so updates have to come from
 this repo.
@@ -130,6 +130,10 @@ puts STOP in the message box.
 - **Archiving moved to the overflow**, where the other whole-conversation actions live; it sat one
   mis-tap away from the call button.
 - **Attachments are no longer clipped** at the right edge of a conversation.
+- **Its own About page**, which points at this project for issues and source, and credits the one
+  it is built on rather than speaking for it.
+
+<img src="docs/screenshots/about.png" width="320" alt="The About screen">
 
 ## Settings
 
@@ -156,12 +160,19 @@ Requires JDK 17 or newer and the Android SDK (compileSdk 36).
 ./gradlew detekt lintFossDebug testFossDebugUnitTest
 ```
 
-Two things about this fork are deliberate and worth knowing before changing them. The Kotlin and
-resource namespace stays `org.fossify.messages` so the sources remain diffable against upstream,
-while the installed package id is `org.fossify.messages.levinium` — `SplashActivity` has to live
-under the latter, because commons builds the launcher icon aliases from it. And that id keeps the
-`org.fossify.` prefix on purpose: commons warns the user they are running "a fake version of the
-app" whenever the package name lacks it.
+Two things about this fork are deliberate and worth knowing before changing them.
+
+The Kotlin and resource namespace stays `org.fossify.messages` so the sources remain diffable
+against upstream, while the installed package id is `com.levinium.messages`. `SplashActivity` has
+to live under the package id rather than the namespace, because commons builds the launcher icon
+aliases from it — move it back and changing the app icon colour throws "Unknown component".
+
+The app builds against [levinium/commons](https://github.com/levinium/commons), which is Fossify
+Commons with two checks removed: it calls the app a modded version at random, and refuses to open
+the customization screen at all after a hundred runs, whenever the package name does not start with
+`org.fossify.`. Those are aimed at repackaged clones, but they catch any honest fork too, which is
+what kept this app in somebody else's namespace. The patch is three lines against a release tag,
+published through JitPack; nothing else in commons is changed.
 
 ## License
 

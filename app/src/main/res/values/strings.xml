@@ -11,6 +11,17 @@
     <string name="message_resending">Resending…</string>
     <string name="search_in_conversation">Search in conversation</string>
     <string name="view_media">View media</string>
+    <string name="app_launcher_name_full">Levinium Messages</string>
+    <string name="about_summary">An unofficial fork of Fossify Messages. Not affiliated with, endorsed by, or supported by the Fossify project.</string>
+    <string name="about_report_issue">Report an issue</string>
+    <string name="about_project">Project</string>
+    <string name="about_source_code">Source code</string>
+    <string name="about_releases">Releases and changelog</string>
+    <string name="about_upstream">Built on Fossify Messages</string>
+    <string name="about_upstream_summary">Most of this app is their work, under the same licence</string>
+    <string name="about_support_upstream">Donate to the Fossify project</string>
+    <string name="about_license">Licence</string>
+    <string name="about_license_summary">GPL-3.0, the same as upstream</string>
     <string name="use_verbose_date_format">Spell dates out, like \"Wed · Sep 19 · 8:03 PM\"</string>
     <string name="use_relative_days">Say \"Today\" and \"Yesterday\" instead of the date</string>
     <string name="open_media_in_app">Open pictures and videos in the app</string>

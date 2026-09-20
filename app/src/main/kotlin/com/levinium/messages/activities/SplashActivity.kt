@@ -1,4 +1,4 @@
-package org.fossify.messages.levinium.activities
+package com.levinium.messages.activities
 
 import android.content.Intent
 import org.fossify.commons.activities.BaseSplashActivity

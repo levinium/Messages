@@ -36,9 +36,6 @@ import org.fossify.commons.extensions.toast
 import org.fossify.commons.extensions.underlineText
 import org.fossify.commons.extensions.updateTextColors
 import org.fossify.commons.extensions.viewBinding
-import org.fossify.commons.helpers.LICENSE_EVENT_BUS
-import org.fossify.commons.helpers.LICENSE_INDICATOR_FAST_SCROLL
-import org.fossify.commons.helpers.LICENSE_SMS_MMS
 import org.fossify.commons.helpers.LOWER_ALPHA
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.PERMISSION_READ_CONTACTS
@@ -47,7 +44,6 @@ import org.fossify.commons.helpers.PERMISSION_SEND_SMS
 import org.fossify.commons.helpers.SHORT_ANIMATION_DURATION
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.helpers.isQPlus
-import org.fossify.commons.models.FAQItem
 import org.fossify.commons.models.Release
 import org.fossify.messages.BuildConfig
 import org.fossify.messages.R
@@ -636,50 +632,9 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun launchAbout() {
-        val licenses = LICENSE_EVENT_BUS or LICENSE_SMS_MMS or LICENSE_INDICATOR_FAST_SCROLL
-
-        val faqItems = arrayListOf(
-            FAQItem(
-                title = R.string.faq_2_title,
-                text = R.string.faq_2_text
-            ),
-            FAQItem(
-                title = R.string.faq_3_title,
-                text = R.string.faq_3_text
-            ),
-            FAQItem(
-                title = R.string.faq_4_title,
-                text = R.string.faq_4_text
-            ),
-            FAQItem(
-                title = org.fossify.commons.R.string.faq_9_title_commons,
-                text = org.fossify.commons.R.string.faq_9_text_commons
-            )
-        )
-
-        if (!resources.getBoolean(org.fossify.commons.R.bool.hide_google_relations)) {
-            faqItems.add(
-                FAQItem(
-                    title = org.fossify.commons.R.string.faq_2_title_commons,
-                    text = org.fossify.commons.R.string.faq_2_text_commons
-                )
-            )
-            faqItems.add(
-                FAQItem(
-                    title = org.fossify.commons.R.string.faq_6_title_commons,
-                    text = org.fossify.commons.R.string.faq_6_text_commons
-                )
-            )
-        }
-
-        startAboutActivity(
-            appNameId = R.string.app_name,
-            licenseMask = licenses,
-            versionName = BuildConfig.VERSION_NAME,
-            faqItems = faqItems,
-            showFAQBeforeMail = true
-        )
+        startActivity(Intent(applicationContext, AboutActivity::class.java))
     }
+
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun refreshConversations(@Suppress("unused") event: Events.RefreshConversations) {
