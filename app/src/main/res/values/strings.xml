@@ -14,6 +14,9 @@
     <string name="use_verbose_date_format">Spell dates out, like \"Wed · Sep 19 · 8:03 PM\"</string>
     <string name="use_relative_days">Say \"Today\" and \"Yesterday\" instead of the date</string>
     <string name="open_media_in_app">Open pictures and videos in the app</string>
+    <string name="marked_as_read">Marked as read</string>
+    <string name="marked_as_unread">Marked as unread</string>
+    <string name="conversation_archived">Conversation archived</string>
     <string name="swipe_actions">Swipe actions</string>
     <string name="swipe_right_action">Swiping a conversation right</string>
     <string name="swipe_left_action">Swiping a conversation left</string>

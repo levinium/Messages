@@ -1065,20 +1065,41 @@ fun Context.markThreadMessagesRead(threadId: Long) {
     val mmsArgs = arrayOf(id, Mms.MESSAGE_BOX_INBOX.toString(), "0", "0")
     contentResolver.update(Mms.CONTENT_URI, mmsValues, mmsSelection, mmsArgs)
 
+    // Older versions marked outgoing messages unread along with the rest of the thread, and
+    // nothing ever marked them back, so the thread could not return to read. Put them right.
+    val sentSelection = "${Sms.THREAD_ID}=? AND ${Sms.TYPE}!=? AND (${Sms.READ}=? OR ${Sms.SEEN}=?)"
+    val sentArgs = arrayOf(id, Sms.MESSAGE_TYPE_INBOX.toString(), "0", "0")
+    contentResolver.update(Sms.CONTENT_URI, smsValues, sentSelection, sentArgs)
+
+    val sentMmsSelection =
+        "${Mms.THREAD_ID}=? AND ${Mms.MESSAGE_BOX}!=? AND (${Mms.READ}=? OR ${Mms.SEEN}=?)"
+    val sentMmsArgs = arrayOf(id, Mms.MESSAGE_BOX_INBOX.toString(), "0", "0")
+    contentResolver.update(Mms.CONTENT_URI, mmsValues, sentMmsSelection, sentMmsArgs)
+
     messagesDB.markThreadRead(threadId)
     conversationsDB.markRead(threadId)
 }
 
+/**
+ * Only what came in can be unread. Marking the whole thread unread also caught the messages you
+ * sent, and since marking a thread read only ever touches the inbox, those stayed unread forever
+ * and held the conversation unread with them - it could never be marked read again.
+ */
 fun Context.markThreadMessagesUnread(threadId: Long) {
-    arrayOf(Sms.CONTENT_URI, Mms.CONTENT_URI).forEach { uri ->
-        val contentValues = ContentValues().apply {
-            put(Sms.READ, 0)
-            put(Sms.SEEN, 0)
-        }
-        val selection = "${Sms.THREAD_ID} = ?"
-        val selectionArgs = arrayOf(threadId.toString())
-        contentResolver.update(uri, contentValues, selection, selectionArgs)
+    val id = threadId.toString()
+    val values = ContentValues().apply {
+        put(Sms.READ, 0)
+        put(Sms.SEEN, 0)
     }
+
+    val smsSelection = "${Sms.THREAD_ID} = ? AND ${Sms.TYPE} = ?"
+    val smsArgs = arrayOf(id, Sms.MESSAGE_TYPE_INBOX.toString())
+    contentResolver.update(Sms.CONTENT_URI, values, smsSelection, smsArgs)
+
+    val mmsSelection = "${Mms.THREAD_ID} = ? AND ${Mms.MESSAGE_BOX} = ?"
+    val mmsArgs = arrayOf(id, Mms.MESSAGE_BOX_INBOX.toString())
+    contentResolver.update(Mms.CONTENT_URI, values, mmsSelection, mmsArgs)
+
     conversationsDB.markUnread(threadId)
 } 
 

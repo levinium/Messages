@@ -17,8 +17,9 @@ import org.fossify.messages.R
  */
 class ConversationSwipeCallback(
     private val activity: BaseSimpleActivity,
-    private val rightAction: Int,
-    private val leftAction: Int,
+    rightAction: Int,
+    leftAction: Int,
+    private val resolveAction: (position: Int, swipingRight: Boolean) -> Int,
     private val onSwipe: (position: Int, action: Int) -> Unit,
 ) : ItemTouchHelper.SimpleCallback(0, swipeDirections(rightAction, leftAction)) {
 
@@ -35,7 +36,7 @@ class ConversationSwipeCallback(
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
         val position = viewHolder.absoluteAdapterPosition
         if (position != RecyclerView.NO_POSITION) {
-            onSwipe(position, actionFor(direction == ItemTouchHelper.RIGHT))
+            onSwipe(position, resolveAction(position, direction == ItemTouchHelper.RIGHT))
         }
     }
 
@@ -49,14 +50,16 @@ class ConversationSwipeCallback(
         actionState: Int,
         isCurrentlyActive: Boolean,
     ) {
-        if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX != 0f) {
-            drawAction(canvas, viewHolder, dX, actionFor(dX > 0))
+        val position = viewHolder.absoluteAdapterPosition
+        if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE &&
+            dX != 0f &&
+            position != RecyclerView.NO_POSITION
+        ) {
+            drawAction(canvas, viewHolder, dX, resolveAction(position, dX > 0))
         }
 
         super.onChildDraw(canvas, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
     }
-
-    private fun actionFor(swipingRight: Boolean) = if (swipingRight) rightAction else leftAction
 
     /** What is coming is drawn behind the row as it moves, so the swipe says what it will do. */
     private fun drawAction(canvas: Canvas, holder: RecyclerView.ViewHolder, dX: Float, action: Int) {

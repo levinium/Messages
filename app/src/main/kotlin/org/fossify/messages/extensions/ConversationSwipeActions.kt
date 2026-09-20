@@ -4,23 +4,18 @@ import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.extensions.notificationManager
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.messages.activities.SimpleActivity
-import org.fossify.messages.helpers.SWIPE_ACTION_ARCHIVE
-import org.fossify.messages.helpers.SWIPE_ACTION_DELETE
-import org.fossify.messages.helpers.SWIPE_ACTION_TOGGLE_READ
 import org.fossify.messages.helpers.isVerificationCodeThread
-import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.models.Conversation
 
-/** Carries out whatever swiping a conversation was configured to mean. */
-fun SimpleActivity.runSwipeAction(conversation: Conversation, action: Int) {
-    when (action) {
-        SWIPE_ACTION_TOGGLE_READ -> toggleConversationRead(conversation)
-        SWIPE_ACTION_ARCHIVE -> archiveOrDeleteConversation(conversation)
-        SWIPE_ACTION_DELETE -> askDeleteConversation(conversation)
-    }
-}
-
-private fun SimpleActivity.toggleConversationRead(conversation: Conversation) {
+/**
+ * The work behind a swipe. Each one reports back when the store has caught up, so the list can
+ * change the single row that moved instead of reloading every conversation the phone holds -
+ * a full reload took long enough to see, and flashed the whole list on its way past.
+ */
+fun SimpleActivity.toggleConversationRead(
+    conversation: Conversation,
+    callback: (updated: Conversation?) -> Unit,
+) {
     ensureBackgroundThread {
         if (conversation.read) {
             markThreadMessagesUnread(conversation.threadId)
@@ -29,57 +24,32 @@ private fun SimpleActivity.toggleConversationRead(conversation: Conversation) {
             notificationManager.cancel(conversation.threadId.hashCode())
         }
 
+        val updated = conversationsDB.getConversationWithThreadId(conversation.threadId)
         runOnUiThread {
-            refreshConversations()
+            callback(updated)
         }
     }
 }
 
-/**
- * A conversation that exists only to deliver passcodes holds nothing worth filing away, so
- * archiving one can mean offering to delete it instead. Reading the thread takes a moment, hence
- * the trip to the background before anything is decided.
- */
-private fun SimpleActivity.archiveOrDeleteConversation(conversation: Conversation) {
-    if (!config.deletePasscodeThreadsOnSwipe) {
-        archiveConversation(conversation)
-        return
-    }
-
+fun SimpleActivity.setConversationArchived(
+    conversation: Conversation,
+    archived: Boolean,
+    callback: () -> Unit,
+) {
     ensureBackgroundThread {
-        val isPasscodeThread = isPasscodeThread(conversation)
-        runOnUiThread {
-            if (isPasscodeThread) {
-                askDeleteConversation(conversation)
-            } else {
-                archiveConversation(conversation)
-            }
+        updateConversationArchivedStatus(conversation.threadId, archived)
+        if (archived) {
+            notificationManager.cancel(conversation.threadId.hashCode())
         }
-    }
-}
 
-private fun SimpleActivity.isPasscodeThread(conversation: Conversation): Boolean {
-    if (conversation.isGroupConversation) {
-        return false
-    }
-
-    val isKnownContact = conversation.title != conversation.phoneNumber
-    return messagesDB.getThreadMessages(conversation.threadId)
-        .isVerificationCodeThread(isKnownContact)
-}
-
-private fun SimpleActivity.archiveConversation(conversation: Conversation) {
-    ensureBackgroundThread {
-        updateConversationArchivedStatus(conversation.threadId, true)
-        notificationManager.cancel(conversation.threadId.hashCode())
         runOnUiThread {
-            refreshConversations()
+            callback()
         }
     }
 }
 
 /** Deleting a conversation cannot be taken back, so a swipe asks before it happens. */
-private fun SimpleActivity.askDeleteConversation(conversation: Conversation) {
+fun SimpleActivity.askDeleteConversation(conversation: Conversation, callback: () -> Unit) {
     val question = String.format(
         getString(org.fossify.commons.R.string.deletion_confirmation),
         conversation.title
@@ -90,8 +60,35 @@ private fun SimpleActivity.askDeleteConversation(conversation: Conversation) {
             deleteConversation(conversation.threadId)
             notificationManager.cancel(conversation.threadId.hashCode())
             runOnUiThread {
-                refreshConversations()
+                callback()
             }
         }
     }
+}
+
+/**
+ * Which conversations only ever delivered passcodes. Worked out ahead of the gesture so the swipe
+ * can show the delete icon on those rows while it is still moving, rather than deciding after.
+ */
+fun SimpleActivity.findPasscodeThreadIds(
+    conversations: List<Conversation>,
+    callback: (ids: Set<Long>) -> Unit,
+) {
+    ensureBackgroundThread {
+        val ids = conversations
+            .filterNot { it.isGroupConversation }
+            .filter { isPasscodeThread(it) }
+            .map { it.threadId }
+            .toSet()
+
+        runOnUiThread {
+            callback(ids)
+        }
+    }
+}
+
+private fun SimpleActivity.isPasscodeThread(conversation: Conversation): Boolean {
+    val isKnownContact = conversation.title != conversation.phoneNumber
+    return messagesDB.getThreadMessages(conversation.threadId)
+        .isVerificationCodeThread(isKnownContact)
 }
