@@ -1,5 +1,7 @@
 package org.fossify.messages.helpers
 
+import android.provider.Telephony
+import org.fossify.messages.models.Message
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,6 +10,10 @@ import org.junit.Test
  * These rules gate a delete button, so the tests that matter most are the ones asserting what is
  * *not* a verification code. A missed code costs nothing; a false positive risks somebody's
  * messages.
+ *
+ * The thread cases are modelled on real shapes: single-message passcode threads, a service that
+ * mixes codes with other notices, a delivery service that mentions numbers but never a code, and
+ * an ordinary conversation.
  */
 class TwoFactorDetectionTest {
 
@@ -37,7 +43,8 @@ class TwoFactorDetectionTest {
             "The total came to 2350 which is more than I expected",
             "Flight AA1234 lands at 8:15",
             "Booked, table for two at 7",
-            "Running about 10 minutes late, sorry!",
+            "Arriving Tomorrow: Your Fresh order for 1:00 PM - 3:00 PM",
+            "WhatsApp: Tap to create your account. Don't share this with anyone. 4821",
         ).forEach {
             assertFalse("should not be a code: $it", isVerificationCodeText(it))
         }
@@ -45,11 +52,8 @@ class TwoFactorDetectionTest {
 
     @Test
     fun `needs both a code and a word saying it is one`() {
-        // digits with no context
         assertFalse(isVerificationCodeText("483920"))
-        // the word without any digits
         assertFalse(isVerificationCodeText("Please verify your account"))
-        // both present
         assertTrue(isVerificationCodeText("Please verify with 483920"))
     }
 
@@ -62,22 +66,84 @@ class TwoFactorDetectionTest {
     }
 
     @Test
-    fun `treats short codes and sender ids as automated`() {
-        listOf("262966", "30368", "22395", "VERIFY", "Amazon", "PayPal").forEach {
-            assertTrue("should be automated: $it", it.isAutomatedSender())
-        }
+    fun `a single passcode message is a passcode thread`() {
+        val thread = listOf(received("Your Apple Account Code is: 161283"))
+        assertTrue(thread.isVerificationCodeThread(isKnownContact = false))
     }
 
     @Test
-    fun `treats real phone numbers and email gateways as people`() {
-        listOf(
-            "+15550101",
-            "5550101",
-            "+442071838750",
-            "15551234567",
-            "someone@example.com",
-        ).forEach {
-            assertFalse("should not be automated: $it", it.isAutomatedSender())
+    fun `a service mixing codes with other notices still counts`() {
+        val thread = listOf(
+            received("Your verification code is 483920"),
+            received("Your verification code is 118234"),
+            received("Your verification code is 552190"),
+            received("Your verification code is 771004"),
+            received("Your account balance is low"),
+            received("Our offices are closed Monday"),
+            received("Thank you for banking with us"),
+            received("Your statement is ready"),
+        )
+        assertTrue(thread.isVerificationCodeThread(isKnownContact = false))
+    }
+
+    @Test
+    fun `a thread you have replied to is a conversation`() {
+        val thread = listOf(
+            received("Your verification code is 483920"),
+            sent("thanks!"),
+        )
+        assertFalse(thread.isVerificationCodeThread(isKnownContact = false))
+    }
+
+    @Test
+    fun `a saved contact is never a passcode thread`() {
+        val thread = listOf(received("Your verification code is 483920"))
+        assertFalse(thread.isVerificationCodeThread(isKnownContact = true))
+    }
+
+    @Test
+    fun `a service that never sends codes is left alone`() {
+        val thread = listOf(
+            received("Arriving Tomorrow: Your Fresh order for 1:00 PM - 3:00 PM"),
+            received("It's early! Your order from COMPTON'S is on the way"),
+            received("Your order has been delivered"),
+        )
+        assertFalse(thread.isVerificationCodeThread(isKnownContact = false))
+    }
+
+    @Test
+    fun `one stray mention in a long marketing thread is not enough`() {
+        val thread = buildList {
+            add(received("Use code 483920 at checkout"))
+            repeat(NON_CODE_MESSAGES) { add(received("Half price this weekend only")) }
         }
+        assertFalse(thread.isVerificationCodeThread(isKnownContact = false))
+    }
+
+    private fun received(body: String) =
+        message(body, Telephony.Sms.MESSAGE_TYPE_INBOX)
+
+    private fun sent(body: String) =
+        message(body, Telephony.Sms.MESSAGE_TYPE_SENT)
+
+    private fun message(body: String, type: Int) = Message(
+        id = body.hashCode().toLong(),
+        body = body,
+        type = type,
+        status = Telephony.Sms.STATUS_NONE,
+        participants = ArrayList(),
+        date = 0,
+        read = true,
+        threadId = 1L,
+        isMMS = false,
+        attachment = null,
+        senderPhoneNumber = "12345",
+        senderName = "12345",
+        senderPhotoUri = "",
+        subscriptionId = -1,
+    )
+
+    private companion object {
+        const val NON_CODE_MESSAGES = 10
     }
 }

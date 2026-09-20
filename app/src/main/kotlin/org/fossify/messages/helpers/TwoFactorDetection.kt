@@ -7,14 +7,13 @@ import org.fossify.messages.models.Message
  *
  * Every rule here exists to avoid a false positive, because the cost is lopsided: failing to spot
  * a verification code wastes nothing, while mistaking a friend's message for one risks deleting
- * something irreplaceable. A message has to clear all three tests.
+ * something irreplaceable.
+ *
+ * The sender's number is deliberately not one of the rules. Services send passcodes from short
+ * codes, from toll-free numbers and from ordinary-looking mobile numbers, so the format says very
+ * little. What does separate them is that nobody ever replies to a robot: a thread you have sent
+ * anything into is a conversation, whatever it contains.
  */
-
-/**
- * Short codes run to six digits. Seven is where local phone numbers start, so the ceiling has to
- * stay below it or every seven-digit number gets mistaken for a robot.
- */
-private val SHORT_CODE = Regex("^\\d{3,6}$")
 
 /** Codes are runs of digits, long enough not to be a house number and short enough not to be a year range. */
 private val CODE = Regex("(?<!\\d)\\d{4,8}(?!\\d)")
@@ -26,7 +25,7 @@ private val KEYWORDS = Regex(
 )
 
 /**
- * Whether [this] reads like a verification code from an automated sender.
+ * Whether [this] reads like a verification code.
  *
  * [isKnownContact] must say whether the sender is in the address book. A message from somebody
  * saved is never treated as a passcode, however much it looks like one, because "my code is
@@ -37,7 +36,7 @@ fun Message.looksLikeVerificationCode(isKnownContact: Boolean): Boolean {
         return false
     }
 
-    return senderPhoneNumber.isAutomatedSender() && isVerificationCodeText(body)
+    return isVerificationCodeText(body)
 }
 
 /** A run of digits that a sentence is plainly presenting as a code, rather than merely containing. */
@@ -46,36 +45,33 @@ fun isVerificationCodeText(body: String): Boolean {
 }
 
 /**
- * Short codes and alphanumeric sender IDs are the addresses banks and services send from. A normal
- * phone number is long enough to be dialled, and is never treated as automated.
+ * Whether a whole conversation is one of those passcode threads.
+ *
+ * Requires that nothing has ever been sent into it, that the other party is not a saved contact,
+ * and that a fair share of what arrived were codes rather than one stray message mentioning a PIN.
  */
-fun String.isAutomatedSender(): Boolean {
-    val trimmed = trim()
-    if (trimmed.isEmpty()) {
+fun List<Message>.isVerificationCodeThread(isKnownContact: Boolean): Boolean {
+    if (isKnownContact) {
         return false
     }
 
-    // An alphabetic sender ID such as "VERIFY" cannot be a person's number.
-    if (trimmed.any { it.isLetter() }) {
-        return !trimmed.contains('@') // but an email-to-SMS gateway might be
+    // Replying makes it a conversation, and conversations are not disposable.
+    if (any { !it.isReceivedMessage() && !it.isScheduled }) {
+        return false
     }
 
-    return SHORT_CODE.matches(trimmed.filter { it.isDigit() })
-}
-
-/**
- * Whether a whole conversation is one of those passcode threads: an automated sender, and messages
- * that are mostly codes rather than the occasional one mentioning a PIN.
- */
-fun List<Message>.isVerificationCodeThread(isKnownContact: Boolean): Boolean {
     val received = filter { it.isReceivedMessage() }
-    if (received.size < MIN_MESSAGES_TO_JUDGE_THREAD) {
+    if (received.isEmpty()) {
         return false
     }
 
     val codes = received.count { it.looksLikeVerificationCode(isKnownContact) }
-    return codes >= received.size * MAJORITY
+    return codes > 0 && codes >= received.size * MIN_CODE_SHARE
 }
 
-private const val MIN_MESSAGES_TO_JUDGE_THREAD = 2
-private const val MAJORITY = 0.6
+/**
+ * Services mix passcodes with other notices - a bank sends both codes and balance alerts - so a
+ * thread does not have to be all codes to be a passcode thread. It does have to be more than a
+ * single mention buried in a marketing feed.
+ */
+private const val MIN_CODE_SHARE = 1.0 / 3.0
