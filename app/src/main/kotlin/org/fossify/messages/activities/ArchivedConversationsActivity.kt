@@ -23,6 +23,7 @@ import org.fossify.messages.helpers.ConversationSwiper
 import org.fossify.messages.helpers.SWIPE_ACTION_DELETE
 import org.fossify.messages.helpers.SWIPE_ACTION_UNARCHIVE
 import org.fossify.messages.helpers.THREAD_ID
+import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
@@ -43,7 +44,8 @@ class ArchivedConversationsActivity : SimpleActivity() {
             activity = this,
             recyclerView = binding.conversationsList,
             adapter = ::getOrCreateConversationsAdapter,
-            onListChanged = { loadArchivedConversations() },
+            // A conversation leaving the archive has to arrive back on the list behind this one.
+            onListChanged = { refreshConversations() },
             rightAction = { SWIPE_ACTION_UNARCHIVE },
             leftAction = { SWIPE_ACTION_DELETE },
         )
