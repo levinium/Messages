@@ -5,14 +5,11 @@ import android.telephony.SubscriptionInfo
 import org.fossify.commons.activities.BaseSimpleActivity
 import org.fossify.commons.dialogs.BasePropertiesDialog
 import org.fossify.commons.extensions.getAlertDialogBuilder
-import org.fossify.commons.extensions.getTimeFormat
-import org.fossify.commons.extensions.getTimeFormatWithSeconds
 import org.fossify.commons.extensions.setupDialogStuff
 import org.fossify.messages.R
-import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.subscriptionManagerCompat
+import org.fossify.messages.helpers.formatMessageDateTime
 import org.fossify.messages.models.Message
-import org.joda.time.DateTime
 
 class MessageDetailsDialog(val activity: BaseSimpleActivity, val message: Message) : BasePropertiesDialog(activity) {
     init {
@@ -72,6 +69,6 @@ class MessageDetailsDialog(val activity: BaseSimpleActivity, val message: Messag
     }
 
     private fun Message.getSentOrReceivedAt(): String {
-        return DateTime(date * 1000L).toString("${activity.config.dateFormat} ${activity.getTimeFormatWithSeconds()}")
+        return (date * 1000L).formatMessageDateTime(activity, withSeconds = true)
     }
 }

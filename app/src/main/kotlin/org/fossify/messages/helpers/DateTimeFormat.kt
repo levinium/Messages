@@ -9,12 +9,17 @@ import org.joda.time.DateTime
 import org.joda.time.LocalDate
 
 /**
- * A spelled-out date reads unambiguously at a glance: "Wed, Sep 19, 2026, 8:03 PM" cannot be
+ * A spelled-out date reads unambiguously at a glance: "Wed · Sep 19, 2026 · 8:03 PM" cannot be
  * misread the way 09/19 and 19/09 can. Commons' own numeric formats stay available behind a
  * setting for anyone who prefers them.
+ *
+ * Middots separate the parts that answer different questions - which weekday, which date, what
+ * time - leaving the comma to do only the job it is good at, holding a year onto a date.
  */
-private const val VERBOSE_DAY = "EEE, MMM d"
-private const val VERBOSE_DAY_YEAR = "EEE, MMM d, yyyy"
+private const val SEPARATOR = " · "
+private const val WEEKDAY = "EEE"
+private const val DAY = "MMM d"
+private const val DAY_YEAR = "MMM d, yyyy"
 
 /** Commons hands back "hh:mm a", which renders 8pm as "08:03 PM". Drop the padding zero. */
 private fun Context.verboseTimePattern(withSeconds: Boolean = false): String {
@@ -26,11 +31,41 @@ private fun Context.verboseTimePattern(withSeconds: Boolean = false): String {
     }
 }
 
-private fun Long.isToday() = LocalDate(this) == LocalDate.now()
+private fun Long.daysAgo() = org.joda.time.Days
+    .daysBetween(LocalDate(this), LocalDate.now())
+    .days
 
 private fun Long.isThisYear() = DateTime(this).year == DateTime.now().year
 
-/** The full thing: "Wed, Sep 19, 2026, 8:03 PM". Used under an opened message. */
+/**
+ * The day something happened, as a reader would say it: "Today", "Yesterday", or the date itself.
+ * Returns null when relative days are switched off or the date is too old to name.
+ */
+private fun Long.relativeDay(context: Context): String? {
+    if (!context.config.useRelativeDays) {
+        return null
+    }
+
+    return when (daysAgo()) {
+        0 -> context.getString(org.fossify.commons.R.string.today)
+        1 -> context.getString(org.fossify.commons.R.string.yesterday)
+        else -> null
+    }
+}
+
+/** The weekday and date, dropping the year while it is still the current one. */
+private fun Long.formatDay(context: Context): String {
+    relativeDay(context)?.let { return it }
+
+    val pattern = if (isThisYear()) DAY else DAY_YEAR
+    return DateTime(this).toString("$WEEKDAY'$SEPARATOR'$pattern")
+}
+
+/**
+ * Always names the day, because that is the point of asking: "Today · 8:03 PM",
+ * "Wed · Sep 19 · 8:03 PM", or "Wed · Sep 19, 2026 · 8:03 PM" once the year has turned.
+ * Used under an opened message, in the message properties and on the thread's date separators.
+ */
 fun Long.formatMessageDateTime(context: Context, withSeconds: Boolean = false): String {
     if (!context.config.useVerboseDateFormat) {
         val timePattern = if (withSeconds) {
@@ -41,43 +76,31 @@ fun Long.formatMessageDateTime(context: Context, withSeconds: Boolean = false): 
         return DateTime(this).toString("${context.config.dateFormat} $timePattern")
     }
 
-    return DateTime(this)
-        .toString("$VERBOSE_DAY_YEAR, ${context.verboseTimePattern(withSeconds)}")
+    val time = DateTime(this).toString(context.verboseTimePattern(withSeconds))
+    return "${formatDay(context)}$SEPARATOR$time"
 }
 
-/**
- * Same idea, but drops what the reader can infer: today shows only a time, and this year drops
- * the year. Used for the date separators running down a conversation.
- */
+/** Kept for the thread's date separators, which want the same thing the message details want. */
 fun Long.formatMessageDateTimeCompact(context: Context): String {
     if (!context.config.useVerboseDateFormat) {
         return formatDateOrTime(context, hideTimeOnOtherDays = false, showCurrentYear = false)
     }
 
-    val time = context.verboseTimePattern()
-    val pattern = when {
-        isToday() -> time
-        isThisYear() -> "$VERBOSE_DAY, $time"
-        else -> "$VERBOSE_DAY_YEAR, $time"
-    }
-
-    return DateTime(this).toString(pattern)
+    return formatMessageDateTime(context)
 }
 
 /**
  * The conversations list, where the date sits in a narrow column beside the name. A full timestamp
- * would truncate, so this gives the date alone once the message is older than today.
+ * would truncate, so today gives a time and everything else gives a date alone.
  */
 fun Long.formatConversationDate(context: Context): String {
     if (!context.config.useVerboseDateFormat) {
         return formatDateOrTime(context, hideTimeOnOtherDays = true, showCurrentYear = false)
     }
 
-    val pattern = when {
-        isToday() -> context.verboseTimePattern()
-        isThisYear() -> VERBOSE_DAY
-        else -> VERBOSE_DAY_YEAR
+    if (daysAgo() == 0) {
+        return DateTime(this).toString(context.verboseTimePattern())
     }
 
-    return DateTime(this).toString(pattern)
+    return formatDay(context)
 }

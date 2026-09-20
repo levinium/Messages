@@ -76,6 +76,11 @@ class Config(context: Context) : BaseConfig(context) {
         set(useVerboseDateFormat) = prefs.edit()
             .putBoolean(USE_VERBOSE_DATE_FORMAT, useVerboseDateFormat).apply()
 
+    var useRelativeDays: Boolean
+        get() = prefs.getBoolean(USE_RELATIVE_DAYS, true)
+        set(useRelativeDays) = prefs.edit()
+            .putBoolean(USE_RELATIVE_DAYS, useRelativeDays).apply()
+
     var mmsFileSizeLimit: Long
         get() = prefs.getLong(MMS_FILE_SIZE_LIMIT, FILE_SIZE_200_KB)
         set(mmsFileSizeLimit) = prefs.edit().putLong(MMS_FILE_SIZE_LIMIT, mmsFileSizeLimit).apply()

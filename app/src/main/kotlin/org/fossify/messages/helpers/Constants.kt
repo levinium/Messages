@@ -50,6 +50,7 @@ const val SKIP_NOTIFICATION_IN_OPEN_CONVERSATION = "skip_notification_in_open_co
 const val SKIP_NOTIFICATION_IN_CONVERSATIONS_LIST = "skip_notification_in_conversations_list"
 const val ALERT_FOR_SKIPPED_NOTIFICATIONS = "alert_for_skipped_notifications"
 const val USE_VERBOSE_DATE_FORMAT = "use_verbose_date_format"
+const val USE_RELATIVE_DAYS = "use_relative_days"
 const val IS_LAUNCHED_FROM_SHORTCUT = "is_launched_from_shortcut"
 const val KEEP_CONVERSATIONS_ARCHIVED = "keep_conversations_archived"
 
