@@ -14,6 +14,12 @@
     <string name="use_verbose_date_format">Spell dates out, like \"Wed · Sep 19 · 8:03 PM\"</string>
     <string name="use_relative_days">Say \"Today\" and \"Yesterday\" instead of the date</string>
     <string name="open_media_in_app">Open pictures and videos in the app</string>
+    <string name="report_spam">Report spam</string>
+    <string name="report_spam_confirmation">Android has no spam report of its own. Forwarding a message to 7726 (SPAM) reports it to your carrier, who can act on the sender.\n\nThe message will be opened in a conversation with 7726, ready for you to send. Your carrier may then ask you to reply with the sender\'s number.</string>
+    <string name="report_spam_forward">Forward to 7726</string>
+    <string name="report_spam_nothing_to_report">There is no received message to forward</string>
+    <string name="reply_stop">Reply STOP</string>
+    <string name="reply_stop_confirmation">Sending STOP tells a legitimate service to stop messaging you. A sender who is not legitimate learns instead that somebody reads what they send, so block them rather than reply.\n\nSTOP will be put in the message box for you to send.</string>
     <string name="marked_as_read">Marked as read</string>
     <string name="marked_as_unread">Marked as unread</string>
     <string name="conversation_archived">Conversation archived</string>

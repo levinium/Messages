@@ -56,6 +56,15 @@ fun isVerificationCodeText(body: String): Boolean {
  * This is a reliable positive signal but an unreliable negative one, since plenty of services send
  * from ordinary-looking numbers. Worth asking, never worth requiring.
  */
+/**
+ * A short code: the three to six digit address services send from. Replying STOP is only
+ * meaningful to one of these, since a real phone number has nobody listening for the word.
+ */
+fun String.isShortCode(): Boolean {
+    val digits = trim().filter { it.isDigit() }
+    return !any { it.isLetter() } && SHORT_CODE.matches(digits)
+}
+
 fun String.isAutomatedSender(): Boolean {
     val trimmed = trim()
     if (trimmed.isEmpty()) {
@@ -68,7 +77,7 @@ fun String.isAutomatedSender(): Boolean {
         return !trimmed.contains('@')
     }
 
-    return SHORT_CODE.matches(trimmed.filter { it.isDigit() })
+    return trimmed.isShortCode()
 }
 
 /**

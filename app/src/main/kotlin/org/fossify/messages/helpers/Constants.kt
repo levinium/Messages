@@ -56,6 +56,10 @@ const val SWIPE_RIGHT_ACTION = "swipe_right_action"
 const val SWIPE_LEFT_ACTION = "swipe_left_action"
 const val DELETE_PASSCODE_THREADS_ON_SWIPE = "delete_passcode_threads_on_swipe"
 
+/** GSMA reserves 7726 ("SPAM") for reporting unwanted messages to the carrier. */
+const val SPAM_REPORT_NUMBER = "7726"
+const val STOP_KEYWORD = "STOP"
+
 // what a swipe on a conversation does
 const val SWIPE_ACTION_NONE = 0
 const val SWIPE_ACTION_TOGGLE_READ = 1

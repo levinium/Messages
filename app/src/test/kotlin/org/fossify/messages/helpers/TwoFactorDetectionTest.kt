@@ -128,6 +128,18 @@ class TwoFactorDetectionTest {
     }
 
     @Test
+    fun `knows which addresses are short codes`() {
+        listOf("29283", "262966", "30368", "129").forEach {
+            assertTrue("should be a short code: $it", it.isShortCode())
+        }
+
+        // STOP means nothing to a person, an alphabetic sender id or a real number.
+        listOf("VERIFY", "Amazon", "+15550101", "5550101", "someone@example.com").forEach {
+            assertFalse("should not be a short code: $it", it.isShortCode())
+        }
+    }
+
+    @Test
     fun `treats real phone numbers and email gateways as people`() {
         listOf(
             "+15550101",

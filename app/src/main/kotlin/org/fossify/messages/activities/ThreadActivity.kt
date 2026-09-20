@@ -181,7 +181,10 @@ import org.fossify.messages.helpers.THREAD_TEXT
 import org.fossify.messages.helpers.MEDIA_ITEMS
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.helpers.VisibleScreenTracker
+import org.fossify.messages.helpers.SPAM_REPORT_NUMBER
+import org.fossify.messages.helpers.STOP_KEYWORD
 import org.fossify.messages.helpers.isAutomatedThread
+import org.fossify.messages.helpers.isShortCode
 import org.fossify.messages.helpers.generateRandomId
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.refreshMessages
@@ -406,6 +409,13 @@ class ThreadActivity : SimpleActivity() {
                         !isAutomatedThread
             findItem(R.id.manage_people).isVisible = !isSpecialNumber() && !isRecycleBin
             findItem(R.id.view_media).isVisible = threadMedia().isNotEmpty()
+
+            // Nobody reports a conversation with a saved contact, and STOP means nothing to a
+            // sender that is not a short code.
+            val isStranger = participants.size == 1 && !isKnownContact() && !isRecycleBin
+            findItem(R.id.report_spam).isVisible =
+                isStranger && messages.any { it.isReceivedMessage() }
+            findItem(R.id.reply_stop).isVisible = isStranger && isShortCodeThread()
             findItem(R.id.mark_as_unread).isVisible = threadItems.isNotEmpty() && !isRecycleBin
 
             // allow saving number in cases when we don't have it stored yet
@@ -420,6 +430,62 @@ class ThreadActivity : SimpleActivity() {
      * Searching inside one conversation, rather than the whole app. Matches come from the messages
      * cached for this thread, which is everything the app has synced for it.
      */
+    /**
+     * There is no such thing as reporting a message to Android, and no API to report one to
+     * anybody else. What does exist is 7726, which the GSMA reserves so a carrier can be told
+     * about a sender, so that is what this offers: the message, addressed and ready to send.
+     */
+    private fun askReportSpam() {
+        val body = messages.lastOrNull { it.isReceivedMessage() }?.body
+        if (body.isNullOrBlank()) {
+            toast(R.string.report_spam_nothing_to_report)
+            return
+        }
+
+        ConfirmationDialog(
+            activity = this,
+            message = getString(R.string.report_spam_confirmation),
+            positive = R.string.report_spam_forward,
+            negative = org.fossify.commons.R.string.cancel,
+        ) {
+            forwardToSpamReport(body)
+        }
+    }
+
+    private fun forwardToSpamReport(body: String) {
+        ensureBackgroundThread {
+            val spamThreadId = getThreadId(SPAM_REPORT_NUMBER)
+            runOnUiThread {
+                Intent(this, ThreadActivity::class.java).apply {
+                    putExtra(THREAD_ID, spamThreadId)
+                    putExtra(THREAD_TITLE, SPAM_REPORT_NUMBER)
+                    putExtra(THREAD_NUMBER, SPAM_REPORT_NUMBER)
+                    putExtra(THREAD_TEXT, body)
+                    startActivity(this)
+                }
+            }
+        }
+    }
+
+    /**
+     * Only worth offering to a short code, and only ever as a draft: STOP tells a service you are
+     * done, but tells anybody else that a person is here and reading.
+     */
+    private fun askReplyStop() {
+        ConfirmationDialog(
+            activity = this,
+            message = getString(R.string.reply_stop_confirmation),
+            positive = R.string.reply_stop,
+            negative = org.fossify.commons.R.string.cancel,
+        ) {
+            binding.messageHolder.threadTypeMessage.apply {
+                setText(STOP_KEYWORD)
+                setSelection(text!!.length)
+                requestFocus()
+            }
+        }
+    }
+
     /** The gallery of a conversation: everything it ever sent or received, in one grid. */
     private fun openThreadMedia() {
         Intent(this, MediaGridActivity::class.java).apply {
@@ -539,6 +605,8 @@ class ThreadActivity : SimpleActivity() {
         when (itemId) {
             R.id.search_in_conversation -> toggleSearch()
             R.id.view_media -> openThreadMedia()
+            R.id.report_spam -> askReportSpam()
+            R.id.reply_stop -> askReplyStop()
             R.id.block_number -> tryBlocking()
             R.id.delete -> askConfirmDelete()
             R.id.restore -> askConfirmRestoreAll()
@@ -1254,9 +1322,18 @@ class ThreadActivity : SimpleActivity() {
             return false
         }
 
-        val participant = participants.first()
-        val isKnownContact = participant.name != participant.phoneNumbers.firstOrNull()?.value
-        return messages.isAutomatedThread(isKnownContact)
+        return messages.isAutomatedThread(isKnownContact())
+    }
+
+    /** A saved contact has a name of their own; a stranger is shown as their number. */
+    private fun isKnownContact(): Boolean {
+        val participant = participants.firstOrNull() ?: return false
+        return participant.name != participant.phoneNumbers.firstOrNull()?.value
+    }
+
+    private fun isShortCodeThread(): Boolean {
+        val number = participants.firstOrNull()?.phoneNumbers?.firstOrNull()?.normalizedNumber
+        return number?.isShortCode() == true
     }
 
     private fun isSpecialNumber(): Boolean {

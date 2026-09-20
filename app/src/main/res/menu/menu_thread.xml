@@ -35,6 +35,16 @@
         android:title="@string/unarchive"
         app:showAsAction="never" />
     <item
+        android:id="@+id/report_spam"
+        android:showAsAction="never"
+        android:title="@string/report_spam"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/reply_stop"
+        android:showAsAction="never"
+        android:title="@string/reply_stop"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/manage_people"
         android:showAsAction="never"
         android:title="@string/add_person"
