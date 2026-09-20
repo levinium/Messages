@@ -120,13 +120,57 @@ class TwoFactorDetectionTest {
         assertFalse(thread.isVerificationCodeThread(isKnownContact = false))
     }
 
-    private fun received(body: String) =
-        message(body, Telephony.Sms.MESSAGE_TYPE_INBOX)
+    @Test
+    fun `treats short codes and sender ids as addresses no person has`() {
+        listOf("29283", "262966", "30368", "129", "VERIFY", "Amazon").forEach {
+            assertTrue("should be automated: $it", it.isAutomatedSender())
+        }
+    }
+
+    @Test
+    fun `treats real phone numbers and email gateways as people`() {
+        listOf(
+            "+15550101",
+            "5550101",
+            "+442071838750",
+            "15551234567",
+            "someone@example.com",
+        ).forEach {
+            assertFalse("should not be automated: $it", it.isAutomatedSender())
+        }
+    }
+
+    @Test
+    fun `a short code is a machine even when it never sends a code`() {
+        // WhatsApp's registration notice carries no passcode, but 29283 is nobody's phone number.
+        val thread = listOf(
+            received("Your WhatsApp account is being registered on a new device", from = "29283")
+        )
+        assertTrue(thread.isAutomatedThread(isKnownContact = false))
+        assertFalse(thread.isVerificationCodeThread(isKnownContact = false))
+    }
+
+    @Test
+    fun `a long number sending codes is a machine too`() {
+        val thread = listOf(
+            received("Your MSU Verification Code is: 213565", from = "+18442009065")
+        )
+        assertTrue(thread.isAutomatedThread(isKnownContact = false))
+    }
+
+    @Test
+    fun `a stranger texting from a real number is not a machine`() {
+        val thread = listOf(received("hey, is this still your number?", from = "+13475551234"))
+        assertFalse(thread.isAutomatedThread(isKnownContact = false))
+    }
+
+    private fun received(body: String, from: String = "12345") =
+        message(body, Telephony.Sms.MESSAGE_TYPE_INBOX, from)
 
     private fun sent(body: String) =
-        message(body, Telephony.Sms.MESSAGE_TYPE_SENT)
+        message(body, Telephony.Sms.MESSAGE_TYPE_SENT, "12345")
 
-    private fun message(body: String, type: Int) = Message(
+    private fun message(body: String, type: Int, from: String) = Message(
         id = body.hashCode().toLong(),
         body = body,
         type = type,
@@ -137,8 +181,8 @@ class TwoFactorDetectionTest {
         threadId = 1L,
         isMMS = false,
         attachment = null,
-        senderPhoneNumber = "12345",
-        senderName = "12345",
+        senderPhoneNumber = from,
+        senderName = from,
         senderPhotoUri = "",
         subscriptionId = -1,
     )

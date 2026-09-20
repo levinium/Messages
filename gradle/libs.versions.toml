@@ -31,6 +31,8 @@ app-build-kotlinJVMTarget = "17"
 #Helpers
 ez-vcard = "0.12.2"
 junit = "4.13.2"
+photoview = "2.3.0"
+media3 = "1.9.0"
 [libraries]
 #AndroidX
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidx-constraintlayout" }
@@ -52,6 +54,9 @@ eventbus = { module = "org.greenrobot:eventbus", version.ref = "eventbus" }
 #Helpers
 ez-vcard = { module = "com.googlecode.ez-vcard:ez-vcard", version.ref = "ez-vcard" }
 junit = { module = "junit:junit", version.ref = "junit" }
+photoview = { module = "com.github.chrisbanes:PhotoView", version.ref = "photoview" }
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 #Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 [bundles]

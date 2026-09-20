@@ -115,7 +115,23 @@ class ThreadAdapter(
 
     @SuppressLint("MissingPermission")
     private val hasMultipleSIMCards = (activity.subscriptionManagerCompat().activeSubscriptionInfoList?.size ?: 0) > 1
-    private val maxChatBubbleWidth = (activity.usableScreenSize.x * 0.8f).toInt()
+    /**
+     * How wide an attachment may be drawn.
+     *
+     * The bubble is 80% of the row, and the row is inset by an activity margin on each side, so
+     * measuring 80% of the whole screen overflows the container by most of that inset and the
+     * right edge of every image gets clipped. Received messages lose the width of the sender's
+     * photo on top of that.
+     */
+    private val chatBubbleInset =
+        activity.resources.getDimensionPixelSize(org.fossify.commons.R.dimen.activity_margin) * 2
+
+    private val senderPhotoWidth =
+        activity.resources.getDimensionPixelSize(org.fossify.commons.R.dimen.list_icon_size_medium) +
+                activity.resources.getDimensionPixelSize(org.fossify.commons.R.dimen.medium_margin)
+
+    private val maxChatBubbleWidth =
+        ((activity.usableScreenSize.x - chatBubbleInset) * BUBBLE_WIDTH_RATIO).toInt()
 
     /** The one message currently tapped open, showing its timestamp and selectable at a larger size. */
     private var expandedMessageId: Long? = null
@@ -125,6 +141,9 @@ class ThreadAdapter(
 
     companion object {
         private const val MAX_MEDIA_HEIGHT_RATIO = 3
+
+        /** Bubbles take four fifths of the row, matching layout_constraintWidth_percent. */
+        private const val BUBBLE_WIDTH_RATIO = 0.8f
         private const val SIM_BITS = 21
         private const val SIM_MASK = (1L shl SIM_BITS) - 1
 
@@ -680,6 +699,9 @@ class ThreadAdapter(
         val mimetype = attachment.mimetype
         val uri = attachment.getUri()
 
+        val attachmentWidth = maxChatBubbleWidth -
+            if (message.isReceivedMessage()) senderPhotoWidth else 0
+
         val imageView = ItemAttachmentImageBinding.inflate(layoutInflater)
         threadMessageAttachmentsHolder.addView(imageView.root)
 
@@ -693,7 +715,7 @@ class ThreadAdapter(
             .load(uri)
             .apply(options)
             .dontAnimate()
-            .override(maxChatBubbleWidth, maxChatBubbleWidth * MAX_MEDIA_HEIGHT_RATIO)
+            .override(attachmentWidth, attachmentWidth * MAX_MEDIA_HEIGHT_RATIO)
             .downsample(DownsampleStrategy.AT_MOST)
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
@@ -707,7 +729,7 @@ class ThreadAdapter(
             .into(imageView.attachmentImage)
 
         imageView.attachmentImage.updateLayoutParams<ViewGroup.LayoutParams> {
-            width = maxChatBubbleWidth
+            width = attachmentWidth
             height = ViewGroup.LayoutParams.WRAP_CONTENT
         }
 

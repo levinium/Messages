@@ -15,6 +15,12 @@ import org.fossify.messages.models.Message
  * anything into is a conversation, whatever it contains.
  */
 
+/**
+ * Short codes run to six digits. Seven is where local phone numbers start, so the ceiling has to
+ * stay below it or every seven-digit number gets mistaken for a robot.
+ */
+private val SHORT_CODE = Regex("^\\d{3,6}$")
+
 /** Codes are runs of digits, long enough not to be a house number and short enough not to be a year range. */
 private val CODE = Regex("(?<!\\d)\\d{4,8}(?!\\d)")
 
@@ -45,12 +51,62 @@ fun isVerificationCodeText(body: String): Boolean {
 }
 
 /**
+ * An address no person could be sending from: a short code, or a name in place of a number.
+ *
+ * This is a reliable positive signal but an unreliable negative one, since plenty of services send
+ * from ordinary-looking numbers. Worth asking, never worth requiring.
+ */
+fun String.isAutomatedSender(): Boolean {
+    val trimmed = trim()
+    if (trimmed.isEmpty()) {
+        return false
+    }
+
+    // An alphabetic sender ID such as "VERIFY" cannot be a person's number, but an
+    // email-to-SMS gateway is somebody writing to you.
+    if (trimmed.any { it.isLetter() }) {
+        return !trimmed.contains('@')
+    }
+
+    return SHORT_CODE.matches(trimmed.filter { it.isDigit() })
+}
+
+/**
  * Whether a whole conversation is one of those passcode threads.
  *
  * Requires that nothing has ever been sent into it, that the other party is not a saved contact,
  * and that a fair share of what arrived were codes rather than one stray message mentioning a PIN.
  */
 fun List<Message>.isVerificationCodeThread(isKnownContact: Boolean): Boolean {
+    if (!isUnansweredMachineThread(isKnownContact)) {
+        return false
+    }
+
+    val received = filter { it.isReceivedMessage() }
+    val codes = received.count { it.looksLikeVerificationCode(isKnownContact) }
+    return codes > 0 && codes >= received.size * MIN_CODE_SHARE
+}
+
+/**
+ * Whether the conversation is with a machine of any kind: passcodes, delivery notices, alerts.
+ *
+ * Broader than [isVerificationCodeThread] on purpose. Nobody dials a short code or searches their
+ * own delivery notifications, so the toolbar can drop those actions for the whole category, while
+ * anything that destroys messages stays keyed to the narrower passcode test.
+ */
+fun List<Message>.isAutomatedThread(isKnownContact: Boolean): Boolean {
+    if (!isUnansweredMachineThread(isKnownContact)) {
+        return false
+    }
+
+    val sendsFromAnAddressNoPersonHas = filter { it.isReceivedMessage() }
+        .any { it.senderPhoneNumber.isAutomatedSender() }
+
+    return sendsFromAnAddressNoPersonHas || isVerificationCodeThread(isKnownContact)
+}
+
+/** The conditions common to both: a stranger, and one you have never answered. */
+private fun List<Message>.isUnansweredMachineThread(isKnownContact: Boolean): Boolean {
     if (isKnownContact) {
         return false
     }
@@ -60,13 +116,7 @@ fun List<Message>.isVerificationCodeThread(isKnownContact: Boolean): Boolean {
         return false
     }
 
-    val received = filter { it.isReceivedMessage() }
-    if (received.isEmpty()) {
-        return false
-    }
-
-    val codes = received.count { it.looksLikeVerificationCode(isKnownContact) }
-    return codes > 0 && codes >= received.size * MIN_CODE_SHARE
+    return any { it.isReceivedMessage() }
 }
 
 /**

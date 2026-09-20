@@ -180,7 +180,7 @@ import org.fossify.messages.helpers.THREAD_NUMBER
 import org.fossify.messages.helpers.THREAD_TEXT
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.helpers.VisibleScreenTracker
-import org.fossify.messages.helpers.isVerificationCodeThread
+import org.fossify.messages.helpers.isAutomatedThread
 import org.fossify.messages.helpers.generateRandomId
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.refreshMessages
@@ -387,11 +387,11 @@ class ThreadActivity : SimpleActivity() {
             findItem(R.id.block_number).isVisible = !isRecycleBin
             // A passcode thread is never called and rarely searched, so the toolbar offers the one
             // thing it is actually for: getting rid of the codes.
-            val isVerificationCodeThread = isVerificationCodeThread()
+            val isAutomatedThread = isAutomatedThread()
             findItem(R.id.search_in_conversation).isVisible =
-                !isVerificationCodeThread && threadItems.isNotEmpty() && !isRecycleBin
+                !isAutomatedThread && threadItems.isNotEmpty() && !isRecycleBin
             findItem(R.id.delete).setShowAsAction(
-                if (isVerificationCodeThread) {
+                if (isAutomatedThread) {
                     MenuItem.SHOW_AS_ACTION_ALWAYS
                 } else {
                     MenuItem.SHOW_AS_ACTION_NEVER
@@ -400,7 +400,7 @@ class ThreadActivity : SimpleActivity() {
 
             findItem(R.id.dial_number).isVisible =
                 participants.size == 1 && !isSpecialNumber() && !isRecycleBin &&
-                        !isVerificationCodeThread
+                        !isAutomatedThread
             findItem(R.id.manage_people).isVisible = !isSpecialNumber() && !isRecycleBin
             findItem(R.id.mark_as_unread).isVisible = threadItems.isNotEmpty() && !isRecycleBin
 
@@ -1219,17 +1219,17 @@ class ThreadActivity : SimpleActivity() {
     }
 
     /**
-     * Whether this conversation is one of those verification-code threads. Participants saved in
+     * Whether this conversation is with a machine rather than a person. Participants saved in
      * the address book disqualify it outright, so a real person is never treated as a robot.
      */
-    private fun isVerificationCodeThread(): Boolean {
+    private fun isAutomatedThread(): Boolean {
         if (isRecycleBin || participants.size != 1) {
             return false
         }
 
         val participant = participants.first()
         val isKnownContact = participant.name != participant.phoneNumbers.firstOrNull()?.value
-        return messages.isVerificationCodeThread(isKnownContact)
+        return messages.isAutomatedThread(isKnownContact)
     }
 
     private fun isSpecialNumber(): Boolean {
