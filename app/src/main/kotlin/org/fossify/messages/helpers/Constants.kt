@@ -51,6 +51,9 @@ const val SKIP_NOTIFICATION_IN_CONVERSATIONS_LIST = "skip_notification_in_conver
 const val ALERT_FOR_SKIPPED_NOTIFICATIONS = "alert_for_skipped_notifications"
 const val USE_VERBOSE_DATE_FORMAT = "use_verbose_date_format"
 const val USE_RELATIVE_DAYS = "use_relative_days"
+const val OPEN_MEDIA_IN_APP = "open_media_in_app"
+const val MEDIA_ITEMS = "media_items"
+const val MEDIA_START_INDEX = "media_start_index"
 const val IS_LAUNCHED_FROM_SHORTCUT = "is_launched_from_shortcut"
 const val KEEP_CONVERSATIONS_ARCHIVED = "keep_conversations_archived"
 

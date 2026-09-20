@@ -25,6 +25,7 @@
     <ID>ForbiddenComment:SmsStatusDeliveredReceiver.kt$SmsStatusDeliveredReceiver$// TODO: Need to check whether SC still trying to deliver the SMS to destination and will send the report again?</ID>
     <ID>FunctionParameterNaming:Config.kt$Config$SIMId: Int</ID>
     <ID>LargeClass:ThreadActivity.kt$ThreadActivity : SimpleActivity</ID>
+    <ID>LargeClass:ThreadAdapter.kt$ThreadAdapter : MyRecyclerViewListAdapter</ID>
     <ID>LongMethod:NotificationHelper.kt$NotificationHelper$@SuppressLint("NewApi") fun showMessageNotification( messageId: Long, isMms: Boolean, address: String, body: String, threadId: Long, bitmap: Bitmap?, sender: String?, alertOnlyOnce: Boolean = false )</ID>
     <ID>MagicNumber:Activity.kt$1000000</ID>
     <ID>MagicNumber:BaseConversationsAdapter.kt$BaseConversationsAdapter$0.7f</ID>

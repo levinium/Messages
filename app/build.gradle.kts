@@ -6,6 +6,7 @@ import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.kotlinParcelize)
     alias(libs.plugins.ksp)
     alias(libs.plugins.detekt)
 }

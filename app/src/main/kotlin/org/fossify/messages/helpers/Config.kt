@@ -81,6 +81,11 @@ class Config(context: Context) : BaseConfig(context) {
         set(useRelativeDays) = prefs.edit()
             .putBoolean(USE_RELATIVE_DAYS, useRelativeDays).apply()
 
+    var openMediaInApp: Boolean
+        get() = prefs.getBoolean(OPEN_MEDIA_IN_APP, true)
+        set(openMediaInApp) = prefs.edit()
+            .putBoolean(OPEN_MEDIA_IN_APP, openMediaInApp).apply()
+
     var mmsFileSizeLimit: Long
         get() = prefs.getLong(MMS_FILE_SIZE_LIMIT, FILE_SIZE_200_KB)
         set(mmsFileSizeLimit) = prefs.edit().putLong(MMS_FILE_SIZE_LIMIT, mmsFileSizeLimit).apply()

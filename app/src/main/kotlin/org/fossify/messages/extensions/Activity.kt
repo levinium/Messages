@@ -64,6 +64,36 @@ fun Activity.launchViewIntent(uri: Uri, mimetype: String, filename: String) {
     }
 }
 
+fun Activity.shareMediaIntent(uri: Uri, mimetype: String) {
+    Intent(Intent.ACTION_SEND).apply {
+        type = mimetype
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        try {
+            val title = getString(org.fossify.commons.R.string.share_via)
+            startActivity(Intent.createChooser(this, title))
+        } catch (_: ActivityNotFoundException) {
+            toast(org.fossify.commons.R.string.no_app_found)
+        }
+    }
+}
+
+/** Asks the system where to put a copy; the caller finishes the job in onActivityResult. */
+fun Activity.launchSaveMediaIntent(mimetype: String, filename: String, requestCode: Int) {
+    Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+        type = mimetype
+        addCategory(Intent.CATEGORY_OPENABLE)
+        putExtra(Intent.EXTRA_TITLE, filename)
+
+        try {
+            startActivityForResult(this, requestCode)
+        } catch (_: ActivityNotFoundException) {
+            toast(org.fossify.commons.R.string.system_service_disabled)
+        }
+    }
+}
+
 fun Activity.startContactDetailsIntent(contact: SimpleContact) {
     val simpleContacts = "org.fossify.contacts"
     val simpleContactsDebug = "org.fossify.contacts.debug"
