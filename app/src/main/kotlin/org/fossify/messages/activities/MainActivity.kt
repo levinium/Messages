@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.recyclerview.widget.ItemTouchHelper
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.appLaunched
@@ -30,6 +31,7 @@ import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.getProperPrimaryColor
 import org.fossify.commons.extensions.getProperTextColor
 import org.fossify.commons.extensions.hideKeyboard
+import org.fossify.commons.extensions.notificationManager
 import org.fossify.commons.extensions.openNotificationSettings
 import org.fossify.commons.extensions.toast
 import org.fossify.commons.extensions.underlineText
@@ -62,10 +64,15 @@ import org.fossify.messages.extensions.getConversations
 import org.fossify.messages.extensions.getMessages
 import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.messagesDB
+import org.fossify.messages.extensions.runSwipeAction
+import org.fossify.messages.helpers.ConversationSwipeCallback
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
+import org.fossify.messages.helpers.SWIPE_ACTION_ARCHIVE
+import org.fossify.messages.helpers.SWIPE_ACTION_NONE
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.helpers.formatConversationDate
+import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
@@ -84,6 +91,7 @@ class MainActivity : SimpleActivity() {
     private var storedFontSize = 0
     private var lastSearchedText = ""
     private var bus: EventBus? = null
+    private var swipeHelper: ItemTouchHelper? = null
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -112,6 +120,7 @@ class MainActivity : SimpleActivity() {
         VisibleScreenTracker.onConversationsListResumed()
         updateMenuColors()
         refreshMenuItems()
+        setupSwipeActions()
 
         getOrCreateConversationsAdapter().apply {
             if (storedTextColor != getProperTextColor()) {
@@ -381,6 +390,35 @@ class MainActivity : SimpleActivity() {
                 }
             }
         }
+    }
+
+    /** Rebuilt on every resume, because the settings screen is one of the places you return from. */
+    private fun setupSwipeActions() {
+        swipeHelper?.attachToRecyclerView(null)
+        swipeHelper = null
+
+        val rightAction = config.swipeRightAction
+        val leftAction = config.swipeLeftAction
+        if (rightAction == SWIPE_ACTION_NONE && leftAction == SWIPE_ACTION_NONE) {
+            return
+        }
+
+        val callback = ConversationSwipeCallback(this, rightAction, leftAction) { position, action ->
+            conversationSwiped(position, action)
+        }
+
+        swipeHelper = ItemTouchHelper(callback).apply {
+            attachToRecyclerView(binding.conversationsList)
+        }
+    }
+
+    private fun conversationSwiped(position: Int, action: Int) {
+        val adapter = getOrCreateConversationsAdapter()
+        val conversation = adapter.currentList.getOrNull(position) ?: return
+        // The row is put back at once; whatever the action does to the list follows on its own.
+        adapter.notifyItemChanged(position)
+
+        runSwipeAction(conversation, action)
     }
 
     private fun getOrCreateConversationsAdapter(): ConversationsAdapter {

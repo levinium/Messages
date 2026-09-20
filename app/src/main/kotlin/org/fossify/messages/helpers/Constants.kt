@@ -52,6 +52,16 @@ const val ALERT_FOR_SKIPPED_NOTIFICATIONS = "alert_for_skipped_notifications"
 const val USE_VERBOSE_DATE_FORMAT = "use_verbose_date_format"
 const val USE_RELATIVE_DAYS = "use_relative_days"
 const val OPEN_MEDIA_IN_APP = "open_media_in_app"
+const val SWIPE_RIGHT_ACTION = "swipe_right_action"
+const val SWIPE_LEFT_ACTION = "swipe_left_action"
+const val DELETE_PASSCODE_THREADS_ON_SWIPE = "delete_passcode_threads_on_swipe"
+
+// what a swipe on a conversation does
+const val SWIPE_ACTION_NONE = 0
+const val SWIPE_ACTION_TOGGLE_READ = 1
+const val SWIPE_ACTION_ARCHIVE = 2
+const val SWIPE_ACTION_DELETE = 3
+
 const val MEDIA_ITEMS = "media_items"
 const val MEDIA_START_INDEX = "media_start_index"
 const val IS_LAUNCHED_FROM_SHORTCUT = "is_launched_from_shortcut"

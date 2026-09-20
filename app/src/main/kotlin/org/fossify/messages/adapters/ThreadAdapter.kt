@@ -683,6 +683,13 @@ class ThreadAdapter(
             val primaryColor = activity.getProperPrimaryColor()
             val contrastColor = primaryColor.getContrastColor()
 
+            // The timestamp belongs under the bubble it describes, which for a sent message is
+            // over on the right; left where the layout puts it, it reads as the other person's.
+            threadMessageDetails.updateLayoutParams<RelativeLayout.LayoutParams> {
+                removeRule(RelativeLayout.END_OF)
+                addRule(RelativeLayout.ALIGN_PARENT_END)
+            }
+
             threadMessageBody.apply {
                 updateLayoutParams<RelativeLayout.LayoutParams> {
                     removeRule(RelativeLayout.END_OF)

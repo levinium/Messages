@@ -81,6 +81,20 @@ class Config(context: Context) : BaseConfig(context) {
         set(useRelativeDays) = prefs.edit()
             .putBoolean(USE_RELATIVE_DAYS, useRelativeDays).apply()
 
+    var swipeRightAction: Int
+        get() = prefs.getInt(SWIPE_RIGHT_ACTION, SWIPE_ACTION_TOGGLE_READ)
+        set(swipeRightAction) = prefs.edit().putInt(SWIPE_RIGHT_ACTION, swipeRightAction).apply()
+
+    var swipeLeftAction: Int
+        get() = prefs.getInt(SWIPE_LEFT_ACTION, SWIPE_ACTION_ARCHIVE)
+        set(swipeLeftAction) = prefs.edit().putInt(SWIPE_LEFT_ACTION, swipeLeftAction).apply()
+
+    /** A conversation that only ever sent passcodes is rubbish, not something to file away. */
+    var deletePasscodeThreadsOnSwipe: Boolean
+        get() = prefs.getBoolean(DELETE_PASSCODE_THREADS_ON_SWIPE, true)
+        set(deletePasscodeThreadsOnSwipe) = prefs.edit()
+            .putBoolean(DELETE_PASSCODE_THREADS_ON_SWIPE, deletePasscodeThreadsOnSwipe).apply()
+
     var openMediaInApp: Boolean
         get() = prefs.getBoolean(OPEN_MEDIA_IN_APP, true)
         set(openMediaInApp) = prefs.edit()

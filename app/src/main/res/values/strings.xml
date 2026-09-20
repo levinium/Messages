@@ -11,6 +11,17 @@
     <string name="message_resending">Resending…</string>
     <string name="search_in_conversation">Search in conversation</string>
     <string name="view_media">View media</string>
+    <string name="use_verbose_date_format">Spell dates out, like \"Wed · Sep 19 · 8:03 PM\"</string>
+    <string name="use_relative_days">Say \"Today\" and \"Yesterday\" instead of the date</string>
+    <string name="open_media_in_app">Open pictures and videos in the app</string>
+    <string name="swipe_actions">Swipe actions</string>
+    <string name="swipe_right_action">Swiping a conversation right</string>
+    <string name="swipe_left_action">Swiping a conversation left</string>
+    <string name="swipe_action_none">Do nothing</string>
+    <string name="swipe_action_toggle_read">Mark as read or unread</string>
+    <string name="swipe_action_archive">Archive</string>
+    <string name="swipe_action_delete">Delete</string>
+    <string name="delete_passcode_threads_on_swipe">Offer to delete passcode conversations rather than archive them</string>
     <string name="message_sending_error">Your message to \'%s\' has not been sent</string>
     <string name="add_person">Add Person</string>
     <string name="attachment">Attachment</string>

@@ -38,6 +38,10 @@ import org.fossify.messages.dialogs.ExportMessagesDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.emptyMessagesRecycleBin
 import org.fossify.messages.extensions.messagesDB
+import org.fossify.messages.helpers.SWIPE_ACTION_ARCHIVE
+import org.fossify.messages.helpers.SWIPE_ACTION_DELETE
+import org.fossify.messages.helpers.SWIPE_ACTION_NONE
+import org.fossify.messages.helpers.SWIPE_ACTION_TOGGLE_READ
 import org.fossify.messages.helpers.FILE_SIZE_100_KB
 import org.fossify.messages.helpers.FILE_SIZE_1_MB
 import org.fossify.messages.helpers.FILE_SIZE_200_KB
@@ -108,6 +112,12 @@ class SettingsActivity : SimpleActivity() {
         setupManageBlockedKeywords()
         setupChangeDateTimeFormat()
         setupFontSize()
+        setupUseVerboseDateFormat()
+        setupUseRelativeDays()
+        setupOpenMediaInApp()
+        setupSwipeRightAction()
+        setupSwipeLeftAction()
+        setupDeletePasscodeThreadsOnSwipe()
         setupShowCharacterCounter()
         setupUseSimpleCharacters()
         setupSendOnEnter()
@@ -332,6 +342,100 @@ class SettingsActivity : SimpleActivity() {
             }
         }
     }
+
+    private fun setupUseVerboseDateFormat() = binding.apply {
+        settingsUseVerboseDateFormat.isChecked = config.useVerboseDateFormat
+        settingsUseVerboseDateFormatHolder.setOnClickListener {
+            settingsUseVerboseDateFormat.toggle()
+            config.useVerboseDateFormat = settingsUseVerboseDateFormat.isChecked
+            updateRelativeDaysVisibility()
+        }
+    }
+
+    private fun setupUseRelativeDays() = binding.apply {
+        settingsUseRelativeDays.isChecked = config.useRelativeDays
+        settingsUseRelativeDaysHolder.setOnClickListener {
+            settingsUseRelativeDays.toggle()
+            config.useRelativeDays = settingsUseRelativeDays.isChecked
+        }
+
+        updateRelativeDaysVisibility()
+    }
+
+    /** Named days are part of the spelled-out format; the numeric one has no room for them. */
+    private fun updateRelativeDaysVisibility() = binding.apply {
+        settingsUseRelativeDaysHolder.beVisibleIf(config.useVerboseDateFormat)
+    }
+
+    private fun setupOpenMediaInApp() = binding.apply {
+        settingsOpenMediaInApp.isChecked = config.openMediaInApp
+        settingsOpenMediaInAppHolder.setOnClickListener {
+            settingsOpenMediaInApp.toggle()
+            config.openMediaInApp = settingsOpenMediaInApp.isChecked
+        }
+    }
+
+    private fun setupSwipeRightAction() = binding.apply {
+        settingsSwipeRightAction.text = swipeActionText(config.swipeRightAction)
+        settingsSwipeRightActionHolder.setOnClickListener {
+            askForSwipeAction(config.swipeRightAction) {
+                config.swipeRightAction = it
+                settingsSwipeRightAction.text = swipeActionText(it)
+                updateDeletePasscodeThreadsVisibility()
+            }
+        }
+    }
+
+    private fun setupSwipeLeftAction() = binding.apply {
+        settingsSwipeLeftAction.text = swipeActionText(config.swipeLeftAction)
+        settingsSwipeLeftActionHolder.setOnClickListener {
+            askForSwipeAction(config.swipeLeftAction) {
+                config.swipeLeftAction = it
+                settingsSwipeLeftAction.text = swipeActionText(it)
+                updateDeletePasscodeThreadsVisibility()
+            }
+        }
+    }
+
+    private fun setupDeletePasscodeThreadsOnSwipe() = binding.apply {
+        settingsDeletePasscodeThreadsOnSwipe.isChecked = config.deletePasscodeThreadsOnSwipe
+        settingsDeletePasscodeThreadsOnSwipeHolder.setOnClickListener {
+            settingsDeletePasscodeThreadsOnSwipe.toggle()
+            config.deletePasscodeThreadsOnSwipe = settingsDeletePasscodeThreadsOnSwipe.isChecked
+        }
+
+        updateDeletePasscodeThreadsVisibility()
+    }
+
+    /** It only ever changes what archiving does, so it is noise when nothing archives. */
+    private fun updateDeletePasscodeThreadsVisibility() = binding.apply {
+        settingsDeletePasscodeThreadsOnSwipeHolder.beVisibleIf(
+            config.swipeRightAction == SWIPE_ACTION_ARCHIVE ||
+                    config.swipeLeftAction == SWIPE_ACTION_ARCHIVE
+        )
+    }
+
+    private fun askForSwipeAction(current: Int, callback: (action: Int) -> Unit) {
+        val items = arrayListOf(
+            RadioItem(SWIPE_ACTION_NONE, getString(R.string.swipe_action_none)),
+            RadioItem(SWIPE_ACTION_TOGGLE_READ, getString(R.string.swipe_action_toggle_read)),
+            RadioItem(SWIPE_ACTION_ARCHIVE, getString(R.string.swipe_action_archive)),
+            RadioItem(SWIPE_ACTION_DELETE, getString(R.string.swipe_action_delete)),
+        )
+
+        RadioGroupDialog(this@SettingsActivity, items, current) {
+            callback(it as Int)
+        }
+    }
+
+    private fun swipeActionText(action: Int) = getString(
+        when (action) {
+            SWIPE_ACTION_TOGGLE_READ -> R.string.swipe_action_toggle_read
+            SWIPE_ACTION_ARCHIVE -> R.string.swipe_action_archive
+            SWIPE_ACTION_DELETE -> R.string.swipe_action_delete
+            else -> R.string.swipe_action_none
+        }
+    )
 
     private fun setupSkipNotificationInOpenConversation() = binding.apply {
         settingsSkipNotificationInOpenConversation.isChecked =
