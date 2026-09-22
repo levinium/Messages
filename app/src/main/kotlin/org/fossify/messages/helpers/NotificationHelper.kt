@@ -9,6 +9,7 @@ import android.app.NotificationManager.INTERRUPTION_FILTER_ALL
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioManager
@@ -20,7 +21,9 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
-import org.fossify.commons.extensions.getProperPrimaryColor
+import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.drawable.IconCompat
+import org.fossify.commons.extensions.baseConfig
 import org.fossify.commons.extensions.notificationManager
 import org.fossify.commons.helpers.SimpleContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
@@ -33,6 +36,45 @@ import org.fossify.messages.messaging.isShortCodeWithLetters
 import org.fossify.messages.receivers.DeleteSmsReceiver
 import org.fossify.messages.receivers.DirectReplyReceiver
 import org.fossify.messages.receivers.MarkAsReadReceiver
+
+/**
+ * The accent Android paints a notification with: the app name, the small icon and the actions.
+ *
+ * The app icon color rather than the primary one, so a notification is recognizably from the same
+ * app as the icon it was launched from. The primary color is a different setting entirely, and
+ * under Material You it is not even the user's choice.
+ *
+ * Lifted or dropped to suit the notification shade, which follows the system theme rather than the
+ * app's. The black icon is why: handed over as it is, it has nothing to show against a dark shade,
+ * so Android quietly substitutes its own accent - which looks exactly like the choice having been
+ * ignored. Only the lightness moves, so the color stays recognizably the one that was picked.
+ */
+private val Context.notificationColor: Int
+    get() = baseConfig.appIconColor.readableOn(isSystemInNightMode())
+
+private fun Context.isSystemInNightMode(): Boolean {
+    val nightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+    return nightMode == Configuration.UI_MODE_NIGHT_YES
+}
+
+private fun Int.readableOn(isNight: Boolean): Int {
+    val hsl = FloatArray(HSL_COMPONENTS)
+    ColorUtils.colorToHSL(this, hsl)
+    hsl[LIGHTNESS] = if (isNight) {
+        hsl[LIGHTNESS].coerceAtLeast(MIN_LIGHTNESS_ON_DARK)
+    } else {
+        hsl[LIGHTNESS].coerceAtMost(MAX_LIGHTNESS_ON_LIGHT)
+    }
+
+    return ColorUtils.HSLToColor(hsl)
+}
+
+private const val HSL_COMPONENTS = 3
+private const val LIGHTNESS = 2
+
+/** Roughly where Android lands when it lightens an accent for a dark shade itself. */
+private const val MIN_LIGHTNESS_ON_DARK = 0.65f
+private const val MAX_LIGHTNESS_ON_LIGHT = 0.4f
 
 class NotificationHelper(private val context: Context) {
 
@@ -135,7 +177,7 @@ class NotificationHelper(private val context: Context) {
             when (context.config.lockScreenVisibilitySetting) {
                 LOCK_SCREEN_SENDER_MESSAGE -> {
                     setLargeIcon(largeIcon)
-                    setStyle(getMessagesStyle(address, body, notificationId, sender))
+                    setStyle(getMessagesStyle(address, body, notificationId, sender, largeIcon))
                 }
 
                 LOCK_SCREEN_SENDER -> {
@@ -148,7 +190,7 @@ class NotificationHelper(private val context: Context) {
                 }
             }
 
-            color = context.getProperPrimaryColor()
+            color = context.notificationColor
             setSmallIcon(R.drawable.ic_messenger)
             setContentIntent(contentPendingIntent)
             priority = NotificationCompat.PRIORITY_MAX
@@ -221,7 +263,7 @@ class NotificationHelper(private val context: Context) {
         val builder = NotificationCompat.Builder(context, notificationChannelId)
             .setContentTitle(context.getString(R.string.message_not_sent_short))
             .setContentText(summaryText)
-            .setColor(context.getProperPrimaryColor())
+            .setColor(context.notificationColor)
             .setSmallIcon(R.drawable.ic_messenger)
             .setLargeIcon(largeIcon)
             .setStyle(NotificationCompat.BigTextStyle().bigText(summaryText))
@@ -333,16 +375,25 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
+    /**
+     * [avatar] matters more than it looks. A messaging notification draws the sender's picture
+     * from the person rather than from the notification's large icon, and with nothing to draw it
+     * falls back to the app's own icon - the one fixed in the manifest, which no colour setting
+     * reaches and which is not the icon the user picked. Handing the picture over keeps the
+     * sender's face on their message and the app's icon out of it.
+     */
     private fun getMessagesStyle(
         address: String,
         body: String,
         notificationId: Int,
-        name: String?
+        name: String?,
+        avatar: Bitmap?,
     ): NotificationCompat.MessagingStyle {
         val sender = if (name != null) {
             Person.Builder()
                 .setName(name)
                 .setKey(address)
+                .apply { avatar?.let { setIcon(IconCompat.createWithBitmap(it)) } }
                 .build()
         } else {
             null
