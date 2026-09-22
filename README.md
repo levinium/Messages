@@ -2,8 +2,9 @@
 
 # Levinium Messages
 
-**An SMS app that stays out of your way: no notifications for messages you are already reading, a
-gallery for what a conversation has sent you, and dates you can read at a glance.**
+**An SMS app that stays out of your way: tapback reactions an iPhone understands, no notifications
+for messages you are already reading, a gallery for what a conversation has sent you, and dates you
+can read at a glance.**
 
 An unofficial fork of [Fossify Messages](https://github.com/FossifyOrg/Messages), keeping everything
 that app does and adding the things this one needed. It is not a Fossify product and is not
@@ -19,7 +20,7 @@ fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 ## Download
 
-[**LeviniumMessages-2.1.0.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+[**LeviniumMessages-2.2.0.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
 
 Built on Fossify Messages 1.9.1.
 
@@ -35,6 +36,42 @@ It installs as its own app (`com.levinium.messages`) alongside Fossify Messages,
 try it without giving anything up. Releases are signed with a personal key, and Android will not
 install an update signed with a different key over an existing install, so updates have to come from
 this repo.
+
+## React to a message, the way an iPhone does
+
+Long press a message and pick a tapback — ❤️ 👍 👎 😂 ‼️ ❓, or **+** for any other emoji. It lands on
+the message it belongs to rather than arriving as a message of its own, and picking the one you
+already chose takes it back off. One reaction per person per message, as on an iPhone.
+
+SMS has no reactions of its own, so a tapback travels as the sentence an iPhone would have sent:
+`Loved "Booked, table for two at 7"`. Reactions that arrive in that shape are read back out and
+drawn on the message they quote, which is what makes this work in both directions — with iPhones,
+and with Android apps that send the same wording.
+
+One limit worth knowing before you rely on it: an iPhone only *draws* a tapback that reached it over
+iMessage or RCS, and Android gives no app outside Google Messages a way to send RCS. A reaction sent
+from here arrives on their screen as that sentence rather than as a tapback. It reads exactly the
+way their own phone would have written it, which is as far as SMS goes.
+
+<img src="docs/screenshots/reactions.png" width="320" alt="A conversation with a reaction on a message from each side">
+
+## Everything you can do to a message, in one place
+
+Long press a message for its own menu: the tapback row across the top, then copy, forward, share,
+select text, properties and delete. **Select** is in there too, which is how you reach the old
+multi-select when you want to act on several messages at once.
+
+<img src="docs/screenshots/message-menu.png" width="320" alt="The long press menu open beside a message">
+
+## Links, with or without the tracking
+
+Long press a link for what to do with it, as icons rather than a list of radio buttons: open, copy
+or share. When the link carries parameters — the `?utm_source=…` a link picks up on its way from
+wherever it was found — a second row offers the same three actions on the address with everything
+from the question mark onwards taken off. Both addresses are shown, so you can see what you are
+about to copy before you copy it.
+
+<img src="docs/screenshots/link-options.png" width="320" alt="The link menu, showing the full address and the one without parameters">
 
 ## Notifications are skipped for messages already on screen
 
@@ -65,11 +102,11 @@ dated. Both of those, and the spelled-out format itself, can be turned off in Se
 
 ## Tap a message to read it
 
-Tapping a message opens it: larger text, its timestamp underneath, and the text selectable so you
-can copy part of it rather than the whole thing. Tapping it again closes it.
+Tapping a message opens it: larger text with its timestamp underneath. Tapping it again closes it.
+Copying part of a message rather than the whole thing is **Select text**, in the long press menu
+above.
 
-Long pressing a link offers to copy, open or share it. Messages that are nothing but emoji are drawn
-large, the way every other messaging app draws them.
+Messages that are nothing but emoji are drawn large, the way every other messaging app draws them.
 
 <img src="docs/screenshots/reading-mode.png" width="320" alt="A message opened to show its timestamp">
 
@@ -93,7 +130,7 @@ Filing something away meant long pressing it, waiting for the action bar and fin
 A swipe does it: **right marks read or unread, left archives**, and either direction can be set to
 any of those, to delete, or to nothing at all.
 
-The row carries the colour and icon of what is coming while it moves, so the gesture says what it
+The row carries the color and icon of what is coming while it moves, so the gesture says what it
 will do before you finish it. Afterwards a bar offers to undo it. In the archive the pair is fixed
 and obvious: swipe right to put a conversation back, left to be rid of it.
 
@@ -101,7 +138,7 @@ and obvious: swipe right to put a conversation back, left to be rid of it.
 
 ## Passcode conversations are treated as what they are
 
-A conversation that only ever delivered verification codes is not a conversation. The app recognises
+A conversation that only ever delivered verification codes is not a conversation. The app recognizes
 one — nothing ever sent to it, not a saved contact, and mostly codes — and treats it accordingly: it
 is deleted rather than archived (it asks first, and shows the delete icon while you swipe), and its
 toolbar drops the call and search buttons for a delete button, since nobody rings a passcode.
@@ -115,7 +152,7 @@ reach. What does exist is **7726** (SPAM), which the GSMA reserves so a carrier 
 sender. The menu explains that, then opens a conversation with 7726 carrying the offending message,
 ready for you to send. Nothing is sent without you pressing send.
 
-**Reply STOP** sits beside it, shown only for short codes. A legitimate service is obliged to honour
+**Reply STOP** sits beside it, shown only for short codes. A legitimate service is obliged to honor
 it; anybody else just learns that a person is reading what they send, which the app says before it
 puts STOP in the message box.
 
@@ -130,6 +167,8 @@ puts STOP in the message box.
 - **Archiving moved to the overflow**, where the other whole-conversation actions live; it sat one
   mis-tap away from the call button.
 - **Attachments are no longer clipped** at the right edge of a conversation.
+- **Notifications take their accent from the app icon color**, lifted or dropped as needed so that a
+  very dark or very light icon still reads against the notification shade.
 - **Its own About page**, which points at this project for issues and source, and credits the one
   it is built on rather than speaking for it.
 
@@ -137,7 +176,7 @@ puts STOP in the message box.
 
 ## Settings
 
-Everything above that could sensibly be a choice is one, defaulting to the behaviour described here.
+Everything above that could sensibly be a choice is one, defaulting to the behavior described here.
 
 <img src="docs/screenshots/settings.png" width="320" alt="The swipe action settings">
 
@@ -165,7 +204,7 @@ Two things about this fork are deliberate and worth knowing before changing them
 The Kotlin and resource namespace stays `org.fossify.messages` so the sources remain diffable
 against upstream, while the installed package id is `com.levinium.messages`. `SplashActivity` has
 to live under the package id rather than the namespace, because commons builds the launcher icon
-aliases from it — move it back and changing the app icon colour throws "Unknown component".
+aliases from it — move it back and changing the app icon color throws "Unknown component".
 
 The app builds against [levinium/commons](https://github.com/levinium/commons), which is Fossify
 Commons with two checks removed: it calls the app a modded version at random, and refuses to open
