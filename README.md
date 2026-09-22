@@ -2,7 +2,7 @@
 
 # Levinium Messages
 
-**An SMS app that stays out of your way: tapback reactions an iPhone understands, no notifications
+**An SMS app that stays out of your way: tapback reactions, no notifications
 for messages you are already reading, a gallery for what a conversation has sent you, and dates you
 can read at a glance.**
 
