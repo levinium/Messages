@@ -90,8 +90,20 @@
     <string name="message_details_receiver">Receiver</string>
     <string name="message_details_sent_at">Sent at</string>
     <string name="message_details_received_at">Received at</string>
+    <!-- Links -->
+    <string name="link">Link</string>
+    <string name="link_full">Full link</string>
+    <string name="link_without_parameters">Without parameters</string>
+    <string name="link_open">Open</string>
+    <string name="link_copy">Copy</string>
+    <string name="link_share">Share</string>
     <string name="copy_link">Copy link</string>
     <string name="open_link">Open link</string>
+    <string name="share_link">Share link</string>
+    <!-- Reactions -->
+    <string name="pick_a_reaction">Pick a reaction</string>
+    <string name="reaction_by">%1$s by %2$s</string>
+    <string name="select_messages">Select</string>
     <!-- Notifications -->
     <string name="channel_received_sms">Received SMS</string>
     <string name="new_message">New message</string>

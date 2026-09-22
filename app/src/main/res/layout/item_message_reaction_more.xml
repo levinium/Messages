@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/reaction_more_holder"
+    android:layout_width="@dimen/reaction_option_size"
+    android:layout_height="@dimen/reaction_option_size"
+    android:background="?selectableItemBackgroundBorderless">
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/reaction_more"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="@dimen/medium_margin"
+        android:src="@drawable/ic_plus_vector"
+        tools:ignore="ContentDescription" />
+</FrameLayout>

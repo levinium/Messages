@@ -2,12 +2,13 @@ package org.fossify.messages.adapters
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.text.Spanned
 import android.text.style.URLSpan
-import android.view.GestureDetector
 import android.view.MotionEvent
 import android.util.TypedValue
 import android.view.Menu
@@ -34,7 +35,6 @@ import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
 import org.fossify.commons.dialogs.ConfirmationDialog
-import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beGone
@@ -46,13 +46,11 @@ import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getProperPrimaryColor
 import org.fossify.commons.extensions.getTextSize
 import org.fossify.commons.extensions.getTimeFormat
-import org.fossify.commons.extensions.launchViewIntent
 import org.fossify.commons.extensions.shareTextIntent
 import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.usableScreenSize
 import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.SimpleContactsHelper
-import org.fossify.commons.models.RadioItem
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.commons.views.MyTextView
@@ -65,12 +63,20 @@ import org.fossify.messages.databinding.ItemAttachmentDocumentBinding
 import org.fossify.messages.databinding.ItemAttachmentImageBinding
 import org.fossify.messages.databinding.ItemAttachmentVcardBinding
 import org.fossify.messages.databinding.ItemMessageBinding
+import org.fossify.messages.databinding.ItemMessageReactionBinding
+import org.fossify.messages.databinding.ItemMessageReactionMoreBinding
+import org.fossify.messages.databinding.ItemMessageReactionOptionBinding
 import org.fossify.messages.databinding.ItemThreadDateTimeBinding
 import org.fossify.messages.databinding.ItemThreadErrorBinding
 import org.fossify.messages.databinding.ItemThreadSendingBinding
 import org.fossify.messages.databinding.ItemThreadSuccessBinding
 import org.fossify.messages.dialogs.DeleteConfirmationDialog
+import org.fossify.messages.dialogs.LinkOptionsDialog
+import org.fossify.messages.dialogs.MessageAction
+import org.fossify.messages.dialogs.MessageActionsPopup
 import org.fossify.messages.dialogs.MessageDetailsDialog
+import org.fossify.messages.dialogs.MessageReactionRow
+import org.fossify.messages.dialogs.ReactionPickerDialog
 import org.fossify.messages.dialogs.SelectTextDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.getContactFromAddress
@@ -83,6 +89,8 @@ import org.fossify.messages.extensions.startContactDetailsIntent
 import org.fossify.messages.extensions.subscriptionManagerCompat
 import org.fossify.messages.helpers.EXTRA_VCARD_URI
 import org.fossify.messages.helpers.MAX_ENLARGED_EMOJI
+import org.fossify.messages.helpers.ReactionKind
+import org.fossify.messages.helpers.acceptsReactions
 import org.fossify.messages.helpers.THREAD_DATE_TIME
 import org.fossify.messages.helpers.THREAD_RECEIVED_MESSAGE
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE
@@ -98,6 +106,7 @@ import org.fossify.messages.helpers.setupDocumentPreview
 import org.fossify.messages.helpers.setupVCardPreview
 import org.fossify.messages.models.Attachment
 import org.fossify.messages.models.Message
+import org.fossify.messages.models.MessageReaction
 import org.fossify.messages.models.ThreadItem
 import org.fossify.messages.models.ThreadItem.ThreadDateTime
 import org.fossify.messages.models.ThreadItem.ThreadError
@@ -112,6 +121,7 @@ class ThreadAdapter(
     itemClick: (Any) -> Unit,
     val retryMessage: (messageId: Long) -> Unit,
     val isRecycleBin: Boolean,
+    val reactionActions: ThreadReactionActions,
     val deleteMessages: (messages: List<Message>, toRecycleBin: Boolean, fromRecycleBin: Boolean) -> Unit
 ) : MyRecyclerViewListAdapter<ThreadItem>(activity, recyclerView, ThreadItemDiffCallback(), itemClick) {
     private var fontSize = activity.getTextSize()
@@ -159,9 +169,10 @@ class ThreadAdapter(
         /** The timestamp under an open message, deliberately quieter than the message itself. */
         private const val SMALL_TEXT_SCALE = 0.8f
 
-        private const val LINK_COPY = 0
-        private const val LINK_OPEN = 1
-        private const val LINK_SHARE = 2
+        /** A tapback is a footnote on the message, not a second message. */
+        private const val REACTION_TEXT_SCALE = 0.8f
+        private const val REACTION_FILL_ALPHA = 0.15f
+        private const val REACTION_STROKE_ALPHA = 0.35f
 
         /** Status lines sit beneath the message and should never compete with it. */
         private const val STATUS_TEXT_SCALE = 0.8f
@@ -203,16 +214,24 @@ class ThreadAdapter(
             return
         }
 
+        val selected = getSelectedMessages()
         when (id) {
-            R.id.cab_copy_to_clipboard -> copyToClipboard()
-            R.id.cab_save_as -> saveAs()
-            R.id.cab_share -> shareText()
-            R.id.cab_forward_message -> forwardMessage()
-            R.id.cab_select_text -> selectText()
-            R.id.cab_delete -> askConfirmDelete()
-            R.id.cab_restore -> askConfirmRestore()
+            R.id.cab_copy_to_clipboard -> copyToClipboard(selected)
+            R.id.cab_save_as -> saveAs(getSelectedAttachments())
+            R.id.cab_delete -> askConfirmDelete(selected)
+            R.id.cab_restore -> askConfirmRestore(selected)
             R.id.cab_select_all -> selectAll()
-            R.id.cab_properties -> showMessageDetails()
+            else -> oneMessageActionPressed(id, selected.firstOrNull() ?: return)
+        }
+    }
+
+    /** The menu items the toolbar only offers while exactly one message is selected. */
+    private fun oneMessageActionPressed(id: Int, message: Message) {
+        when (id) {
+            R.id.cab_share -> shareText(message)
+            R.id.cab_forward_message -> forwardMessage(message)
+            R.id.cab_select_text -> selectText(message)
+            R.id.cab_properties -> showMessageDetails(message)
         }
     }
 
@@ -257,7 +276,29 @@ class ThreadAdapter(
                 is Message -> setupView(holder, itemView, item)
             }
         }
+
+        // bindView installs its own long press listener on the row after running the callback
+        // above, so ours has to go on afterwards or it would be the one that got thrown away
+        if (item is Message) {
+            setupMessageLongPress(holder, item)
+        }
+
         bindViewHolder(holder)
+    }
+
+    private fun setupMessageLongPress(holder: ViewHolder, message: Message) {
+        val binding = ItemMessageBinding.bind(holder.itemView)
+        // the bubble is what the menu belongs beside, but a picture on its own has no bubble
+        val anchor = if (message.body.isNotEmpty()) {
+            binding.threadMessageBody
+        } else {
+            binding.threadMessageAttachmentsHolder
+        }
+
+        holder.itemView.setOnLongClickListener {
+            longPressed(holder, message, anchor)
+            true
+        }
     }
 
     override fun getItemId(position: Int): Long {
@@ -284,14 +325,13 @@ class ThreadAdapter(
         }
     }
 
-    private fun copyToClipboard() {
-        val selectedMessages = getSelectedItems().filterIsInstance<Message>()
-        if (selectedMessages.isEmpty()) return
+    private fun copyToClipboard(messages: List<Message>) {
+        if (messages.isEmpty()) return
 
-        val textToCopy = if (selectedMessages.size == 1) {
-            selectedMessages.first().body
+        val textToCopy = if (messages.size == 1) {
+            messages.first().body
         } else {
-            selectedMessages.filter { it.body.isNotEmpty() }.joinToString("\n\n") { message ->
+            messages.filter { it.body.isNotEmpty() }.joinToString("\n\n") { message ->
                 val format = "${activity.config.dateFormat}, ${activity.getTimeFormat()}"
                 val dateTime = DateTime(message.millis()).toString(format)
                 val sender = if (message.isReceivedMessage()) message.senderName else activity.getString(R.string.me)
@@ -304,37 +344,34 @@ class ThreadAdapter(
         }
     }
 
+    private fun getSelectedMessages() = getSelectedItems().filterIsInstance<Message>()
+
     private fun getSelectedAttachments(): List<Attachment> {
-        val selectedMessages = getSelectedItems().filterIsInstance<Message>()
-        return selectedMessages.flatMap { it.attachment?.attachments.orEmpty() }
+        return getSelectedMessages().flatMap { it.attachment?.attachments.orEmpty() }
     }
 
-    private fun saveAs() {
-        val attachments = getSelectedAttachments()
+    private fun saveAs(attachments: List<Attachment>) {
         if (attachments.isNotEmpty()) {
             (activity as ThreadActivity).saveMMS(attachments)
         }
     }
 
-    private fun shareText() {
-        val firstItem = getSelectedItems().firstOrNull() as? Message ?: return
-        activity.shareTextIntent(firstItem.body)
+    private fun shareText(message: Message) {
+        activity.shareTextIntent(message.body)
     }
 
-    private fun selectText() {
-        val firstItem = getSelectedItems().firstOrNull() as? Message ?: return
-        if (firstItem.body.trim().isNotEmpty()) {
-            SelectTextDialog(activity, firstItem.body)
+    private fun selectText(message: Message) {
+        if (message.body.trim().isNotEmpty()) {
+            SelectTextDialog(activity, message.body)
         }
     }
 
-    private fun showMessageDetails() {
-        val message = getSelectedItems().firstOrNull() as? Message ?: return
+    private fun showMessageDetails(message: Message) {
         MessageDetailsDialog(activity, message)
     }
 
-    private fun askConfirmDelete() {
-        val itemsCnt = selectedKeys.size
+    private fun askConfirmDelete(messages: List<Message>) {
+        val itemsCnt = messages.size
 
         // not sure how we can get UnknownFormatConversionException here, so show the error and hope that someone reports it
         val items = try {
@@ -353,17 +390,16 @@ class ThreadAdapter(
 
         DeleteConfirmationDialog(activity, question, activity.config.useRecycleBin && !isRecycleBin) { skipRecycleBin ->
             ensureBackgroundThread {
-                val messagesToRemove = getSelectedItems()
-                if (messagesToRemove.isNotEmpty()) {
+                if (messages.isNotEmpty()) {
                     val toRecycleBin = !skipRecycleBin && activity.config.useRecycleBin && !isRecycleBin
-                    deleteMessages(messagesToRemove.filterIsInstance<Message>(), toRecycleBin, false)
+                    deleteMessages(messages, toRecycleBin, false)
                 }
             }
         }
     }
 
-    private fun askConfirmRestore() {
-        val itemsCnt = selectedKeys.size
+    private fun askConfirmRestore(messages: List<Message>) {
+        val itemsCnt = messages.size
 
         // not sure how we can get UnknownFormatConversionException here, so show the error and hope that someone reports it
         val items = try {
@@ -378,16 +414,14 @@ class ThreadAdapter(
 
         ConfirmationDialog(activity, question) {
             ensureBackgroundThread {
-                val messagesToRestore = getSelectedItems()
-                if (messagesToRestore.isNotEmpty()) {
-                    deleteMessages(messagesToRestore.filterIsInstance<Message>(), false, true)
+                if (messages.isNotEmpty()) {
+                    deleteMessages(messages, false, true)
                 }
             }
         }
     }
 
-    private fun forwardMessage() {
-        val message = getSelectedItems().firstOrNull() as? Message ?: return
+    private fun forwardMessage(message: Message) {
         val attachment = message.attachment?.attachments?.firstOrNull()
         Intent(activity, NewConversationActivity::class.java).apply {
             action = Intent.ACTION_SEND
@@ -487,57 +521,45 @@ class ThreadAdapter(
     }
 
     /**
-     * Long press means two different things depending on whether the message is open.
+     * Long press on the text of a message, which means the same thing whether it is open or not:
+     * the message's own menu, and on a link the link's.
      *
-     * Closed, it starts multi-select, as it always has. Open, the text is selectable, so a long
-     * press belongs to Android's own selection handles - except on a link, where copying the link
-     * itself is almost always what was wanted.
+     * Android's own selection handles used to have the open state to themselves, so that part of
+     * a message could be copied in place. Select text in the menu does that job now, and one
+     * gesture doing one thing is worth more than the shortcut was.
      */
     @SuppressLint("ClickableViewAccessibility")
-    private fun setupBodyGestures(
-        body: MyTextView,
-        isExpanded: Boolean,
-        message: Message,
-        holder: ViewHolder,
-    ) {
-        if (!isExpanded) {
-            body.setOnTouchListener(null)
-            body.setOnLongClickListener {
-                holder.viewLongClicked()
-                true
-            }
-            return
-        }
-
-        // Selectable text routes touches through Android's editor, which never calls
-        // OnClickListener, so the tap that closes the message has to be spotted here instead.
-        val gestureDetector = GestureDetector(
-            activity,
-            object : GestureDetector.SimpleOnGestureListener() {
-                override fun onSingleTapUp(event: MotionEvent): Boolean {
-                    holder.viewClicked(message)
-                    return false
-                }
-
-                override fun onLongPress(event: MotionEvent) {
-                    val url = body.urlAt(event.x, event.y) ?: return
-                    showLinkOptions(url)
-                }
-            }
-        )
-
+    private fun setupBodyGestures(body: MyTextView, message: Message, holder: ViewHolder) {
         var touchX = 0f
         var touchY = 0f
+        var heldALink = false
+
         body.setOnTouchListener { _, event ->
-            touchX = event.x
-            touchY = event.y
-            gestureDetector.onTouchEvent(event)
-            false // the editor still gets the event, so selection handles keep working
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchX = event.x
+                    touchY = event.y
+                    heldALink = false
+                    false // passing it on keeps a tap on a link opening the link
+                }
+
+                // A link opens on the finger coming up, however long it was held down for, so
+                // that last event has to be swallowed or the page opens over the menu.
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> heldALink
+                else -> false
+            }
         }
 
         body.setOnLongClickListener {
-            // Swallow the long press only on a link, where the menu above has already opened.
-            body.urlAt(touchX, touchY) != null
+            val url = body.urlAt(touchX, touchY)
+            if (url != null) {
+                heldALink = true
+                body.isPressed = false
+                showLinkOptions(url)
+            } else {
+                longPressed(holder, message, body)
+            }
+            true
         }
     }
 
@@ -550,19 +572,7 @@ class ThreadAdapter(
     }
 
     private fun showLinkOptions(url: String) {
-        val items = arrayListOf(
-            RadioItem(LINK_COPY, activity.getString(R.string.copy_link)),
-            RadioItem(LINK_OPEN, activity.getString(R.string.open_link)),
-            RadioItem(LINK_SHARE, activity.getString(org.fossify.commons.R.string.share)),
-        )
-
-        RadioGroupDialog(activity, items) { chosen ->
-            when (chosen as Int) {
-                LINK_COPY -> activity.copyToClipboard(url)
-                LINK_OPEN -> activity.launchViewIntent(url)
-                LINK_SHARE -> activity.shareTextIntent(url)
-            }
-        }
+        LinkOptionsDialog(activity, url)
     }
 
     private fun setupView(holder: ViewHolder, view: View, message: Message) {
@@ -577,12 +587,7 @@ class ThreadAdapter(
                 text = message.body
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, bodyTextSize(isExpanded, isEmojiOnly))
                 beVisibleIf(message.body.isNotEmpty())
-
-                // Selectable text hands the user Android's own selection handles, which is how
-                // copying part of a message works. It is only on while expanded, because a
-                // selectable view swallows the long press that starts multi-select.
-                setTextIsSelectable(isExpanded)
-                setupBodyGestures(this, isExpanded, message, holder)
+                setupBodyGestures(this, message, holder)
 
                 setOnClickListener {
                     holder.viewClicked(message)
@@ -606,6 +611,8 @@ class ThreadAdapter(
             } else {
                 setupSentMessageView(messageBinding = this, message = message)
             }
+
+            setupReactions(messageBinding = this, message = message)
 
             if (message.attachment?.attachments?.isNotEmpty() == true) {
                 threadMessageAttachmentsHolder.beVisible()
@@ -683,11 +690,14 @@ class ThreadAdapter(
             val primaryColor = activity.getProperPrimaryColor()
             val contrastColor = primaryColor.getContrastColor()
 
-            // The timestamp belongs under the bubble it describes, which for a sent message is
-            // over on the right; left where the layout puts it, it reads as the other person's.
-            threadMessageDetails.updateLayoutParams<RelativeLayout.LayoutParams> {
-                removeRule(RelativeLayout.END_OF)
-                addRule(RelativeLayout.ALIGN_PARENT_END)
+            // The timestamp and the tapbacks both belong under the bubble they describe, which for
+            // a sent message is over on the right; left where the layout puts them, they read as
+            // the other person's.
+            arrayOf(threadMessageDetails, threadMessageReactions).forEach { view ->
+                view.updateLayoutParams<RelativeLayout.LayoutParams> {
+                    removeRule(RelativeLayout.END_OF)
+                    addRule(RelativeLayout.ALIGN_PARENT_END)
+                }
             }
 
             threadMessageBody.apply {
@@ -715,6 +725,161 @@ class ThreadAdapter(
                     setCompoundDrawables(null, null, null, null)
                 }
             }
+        }
+    }
+
+    /** Draws the tapbacks a message is carrying, tucked under the corner of its bubble. */
+    private fun setupReactions(messageBinding: ItemMessageBinding, message: Message) {
+        messageBinding.threadMessageReactions.apply {
+            removeAllViews()
+            beVisibleIf(message.reactions.isNotEmpty())
+            message.reactions
+                .groupBy { it.emoji }
+                .forEach { (emoji, reactions) -> addView(buildReactionChip(this, emoji, reactions)) }
+        }
+    }
+
+    private fun buildReactionChip(
+        parent: LinearLayout,
+        emoji: String,
+        reactions: List<MessageReaction>,
+    ): View {
+        val chip = ItemMessageReactionBinding.inflate(layoutInflater, parent, false).reactionChip
+        chip.text = if (reactions.size > 1) "$emoji ${reactions.size}" else emoji
+        chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * REACTION_TEXT_SCALE)
+        chip.setTextColor(textColor)
+        chip.contentDescription = describeReaction(emoji, reactions)
+        chip.background = (chip.background.mutate() as GradientDrawable).apply {
+            setColor(properPrimaryColor.adjustAlpha(REACTION_FILL_ALPHA))
+            setStroke(
+                resources.getDimensionPixelSize(R.dimen.reaction_chip_stroke_width),
+                properPrimaryColor.adjustAlpha(REACTION_STROKE_ALPHA)
+            )
+        }
+        chip.updateLayoutParams<LinearLayout.LayoutParams> {
+            marginEnd = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.tiny_margin)
+        }
+
+        return chip
+    }
+
+    private fun describeReaction(emoji: String, reactions: List<MessageReaction>): String {
+        val names = reactions.joinToString(", ") {
+            if (it.isFromMe) activity.getString(R.string.me) else it.senderName
+        }
+
+        return activity.getString(R.string.reaction_by, emoji, names)
+    }
+
+    /** Picking the reaction you already have takes it back off, exactly as an iPhone does. */
+    private fun react(message: Message, emoji: String, mine: String?) {
+        val kind = ReactionKind.entries.firstOrNull { it.emoji == emoji }
+        reactionActions.send(message, emoji, kind, emoji == mine)
+    }
+
+    /**
+     * Opens everything you can do to one message, beside the message itself.
+     *
+     * Long press used to go straight into multi-select. That is now one line in this menu, which
+     * keeps the gesture doing the obvious thing - showing you what this message can do - and the
+     * range selection that follows a long press while already selecting still works.
+     */
+    private fun showMessageActions(holder: ViewHolder, message: Message, anchor: View) {
+        val mine = message.reactions.firstOrNull { it.isFromMe }?.emoji
+        val canReact = !isRecycleBin && message.acceptsReactions() && reactionActions.isAvailable()
+        val reactionRow = if (canReact) {
+            MessageReactionRow(
+                chosen = mine,
+                onPick = { emoji -> react(message, emoji, mine) },
+                onPickOther = {
+                    ReactionPickerDialog(activity, mine) { emoji -> react(message, emoji, mine) }
+                }
+            )
+        } else {
+            null
+        }
+
+        MessageActionsPopup(
+            activity = activity,
+            anchor = anchor,
+            alignToEnd = !message.isReceivedMessage(),
+            reactions = reactionRow,
+            actions = buildMessageActions(holder, message)
+        ).show()
+    }
+
+    private fun buildMessageActions(holder: ViewHolder, message: Message): List<MessageAction> {
+        val hasText = message.body.isNotEmpty()
+        val attachments = message.attachment?.attachments.orEmpty()
+        val actions = mutableListOf<MessageAction>()
+
+        if (hasText) {
+            actions += MessageAction(
+                org.fossify.commons.R.drawable.ic_copy_vector,
+                org.fossify.commons.R.string.copy_to_clipboard
+            ) { copyToClipboard(listOf(message)) }
+        }
+
+        actions += MessageAction(
+            org.fossify.commons.R.drawable.ic_arrow_right_vector,
+            R.string.forward_message
+        ) { forwardMessage(message) }
+
+        if (hasText) {
+            actions += MessageAction(
+                org.fossify.commons.R.drawable.ic_share_vector,
+                org.fossify.commons.R.string.share
+            ) { shareText(message) }
+
+            actions += MessageAction(
+                org.fossify.commons.R.drawable.ic_article_outline_vector,
+                org.fossify.commons.R.string.select_text
+            ) { selectText(message) }
+        }
+
+        if (attachments.isNotEmpty()) {
+            actions += MessageAction(
+                org.fossify.commons.R.drawable.ic_save_vector,
+                org.fossify.commons.R.string.save_as
+            ) { saveAs(attachments) }
+        }
+
+        actions += MessageAction(
+            org.fossify.commons.R.drawable.ic_info_vector,
+            org.fossify.commons.R.string.properties
+        ) { showMessageDetails(message) }
+
+        actions += MessageAction(
+            org.fossify.commons.R.drawable.ic_select_all_vector,
+            R.string.select_messages
+        ) { holder.viewLongClicked() }
+
+        if (isRecycleBin) {
+            actions += MessageAction(
+                org.fossify.commons.R.drawable.ic_undo_vector,
+                R.string.restore
+            ) { askConfirmRestore(listOf(message)) }
+        }
+
+        actions += MessageAction(
+            org.fossify.commons.R.drawable.ic_delete_vector,
+            org.fossify.commons.R.string.delete
+        ) { askConfirmDelete(listOf(message)) }
+
+        return actions
+    }
+
+    /**
+     * What a long press does, which depends on whether anything is already selected.
+     *
+     * While selecting, it still extends the selection the way it always has. Otherwise it opens
+     * the message's own menu.
+     */
+    private fun longPressed(holder: ViewHolder, message: Message, anchor: View) {
+        if (actModeCallback.isSelectable) {
+            holder.viewLongClicked()
+        } else {
+            showMessageActions(holder, message, anchor)
         }
     }
 
@@ -766,7 +931,7 @@ class ThreadAdapter(
             }
         }
         imageView.root.setOnLongClickListener {
-            holder.viewLongClicked()
+            longPressed(holder, message, imageView.root)
             true
         }
     }
@@ -784,6 +949,7 @@ class ThreadAdapter(
 
     private fun setupVCardView(holder: ViewHolder, parent: LinearLayout, message: Message, attachment: Attachment) {
         val uri = attachment.getUri()
+        lateinit var card: View
         val vCardView = ItemAttachmentVcardBinding.inflate(layoutInflater).apply {
             setupVCardPreview(
                 activity = activity,
@@ -798,16 +964,18 @@ class ThreadAdapter(
                         activity.startActivity(intent)
                     }
                 },
-                onLongClick = { holder.viewLongClicked() }
+                onLongClick = { longPressed(holder, message, card) }
             )
         }.root
 
+        card = vCardView
         parent.addView(vCardView)
     }
 
     private fun setupFileView(holder: ViewHolder, parent: LinearLayout, message: Message, attachment: Attachment) {
         val mimetype = attachment.mimetype
         val uri = attachment.getUri()
+        lateinit var file: View
         val attachmentView = ItemAttachmentDocumentBinding.inflate(layoutInflater).apply {
             setupDocumentPreview(
                 uri = uri,
@@ -820,10 +988,11 @@ class ThreadAdapter(
                         activity.launchViewIntent(uri, mimetype, attachment.filename)
                     }
                 },
-                onLongClick = { holder.viewLongClicked() }
+                onLongClick = { longPressed(holder, message, file) }
             )
         }.root
 
+        file = attachmentView
         parent.addView(attachmentView)
     }
 

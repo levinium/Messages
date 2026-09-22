@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The card the long press menu sits on; its color is set from the theme at runtime.
+
+    Opaque white here on purpose: tinting keeps the source alpha, so a translucent color would
+    leave the thread showing through the menu.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <corners android:radius="@dimen/message_actions_corner_radius" />
+
+    <solid android:color="@android:color/white" />
+
+</shape>

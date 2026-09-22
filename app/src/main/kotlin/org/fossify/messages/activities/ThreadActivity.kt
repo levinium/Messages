@@ -109,6 +109,7 @@ import org.fossify.messages.R
 import org.fossify.messages.adapters.AttachmentsAdapter
 import org.fossify.messages.adapters.AutoCompleteTextViewAdapter
 import org.fossify.messages.adapters.ThreadAdapter
+import org.fossify.messages.adapters.ThreadReactionActions
 import org.fossify.messages.databinding.ActivityThreadBinding
 import org.fossify.messages.databinding.ItemSelectedContactBinding
 import org.fossify.messages.dialogs.GroupMessageSendDialog
@@ -166,6 +167,9 @@ import org.fossify.messages.helpers.FILE_SIZE_NONE
 import org.fossify.messages.helpers.IS_LAUNCHED_FROM_SHORTCUT
 import org.fossify.messages.helpers.IS_RECYCLE_BIN
 import org.fossify.messages.helpers.MESSAGES_LIMIT
+import org.fossify.messages.helpers.ReactionKind
+import org.fossify.messages.helpers.formatReaction
+import org.fossify.messages.helpers.withReactionsApplied
 import org.fossify.messages.helpers.PICK_CONTACT_INTENT
 import org.fossify.messages.helpers.PICK_DOCUMENT_INTENT
 import org.fossify.messages.helpers.PICK_PHOTO_INTENT
@@ -816,6 +820,12 @@ class ThreadActivity : SimpleActivity() {
                 itemClick = { handleItemClick(it) },
                 retryMessage = { messageId -> retryFailedMessage(messageId) },
                 isRecycleBin = isRecycleBin,
+                reactionActions = ThreadReactionActions(
+                    isAvailable = { canSendReactions() },
+                    send = { message, emoji, kind, remove ->
+                        sendReaction(message, emoji, kind, remove)
+                    }
+                ),
                 deleteMessages = { messages, toRecycleBin, fromRecycleBin ->
                     deleteMessages(
                         messages,
@@ -975,10 +985,11 @@ class ThreadActivity : SimpleActivity() {
         toRecycleBin: Boolean,
         fromRecycleBin: Boolean,
     ) {
-        val messagesToRemoveSet = messagesToRemove.toSet()
         val deletePosition = threadItems.indexOf(messagesToRemove.first())
-        messages = messages.toSortedMessages()
-            .filterNot { it in messagesToRemoveSet }
+        val allMessages = messages.toSortedMessages()
+        val removed = messagesToRemove.withCarriedReactions(allMessages)
+        val messagesToRemoveSet = removed.toSet()
+        messages = allMessages.filterNot { it in messagesToRemoveSet }
         val latestThreadItems = getThreadItems()
         val hasMessages = messages.isNotEmpty()
 
@@ -994,7 +1005,7 @@ class ThreadActivity : SimpleActivity() {
             }
         }
 
-        messagesToRemove.forEach { message ->
+        removed.forEach { message ->
             val messageId = message.id
             if (message.isScheduled) {
                 deleteScheduledMessage(messageId)
@@ -1021,9 +1032,41 @@ class ThreadActivity : SimpleActivity() {
         }
     }
 
+    /**
+     * A message's tapbacks belong to it, so deleting it takes the texts that carried them along.
+     *
+     * Left behind they would come back as bubbles saying Loved "something you can no longer see",
+     * because the message they quote is the only thing keeping them out of sight.
+     */
+    private fun List<Message>.withCarriedReactions(allMessages: List<Message>): List<Message> {
+        val carried = flatMap { message -> message.reactions.map { it.messageId } }.toSet()
+        if (carried.isEmpty()) {
+            return this
+        }
+
+        val alreadyRemoved = map { it.id }.toSet()
+        return this + allMessages.filter { it.id in carried && it.id !in alreadyRemoved }
+    }
+
+    /**
+     * Where a message is on screen, which for a reaction is the message it was drawn on.
+     *
+     * A search matches on the text that carried the tapback, and that text is no longer a row of
+     * its own, so jumping to it means jumping to what it is attached to.
+     */
+    private fun List<ThreadItem>.indexOfShowing(messageId: Long): Int {
+        return indexOfFirst { item ->
+            val message = item as? Message
+            message != null && (
+                    message.id == messageId ||
+                            message.reactions.any { it.messageId == messageId }
+                    )
+        }
+    }
+
     private fun jumpToMessage(messageId: Long) {
         if (messages.any { it.id == messageId }) {
-            val index = threadItems.indexOfFirst { (it as? Message)?.id == messageId }
+            val index = threadItems.indexOfShowing(messageId)
             if (index != -1) binding.threadMessagesList.smoothScrollToPosition(index)
             return
         }
@@ -1050,7 +1093,7 @@ class ThreadActivity : SimpleActivity() {
             runOnUiThread {
                 threadItems = latestThreadItems
                 loadingOlderMessages = false
-                val index = latestThreadItems.indexOfFirst { (it as? Message)?.id == messageId }
+                val index = latestThreadItems.indexOfShowing(messageId)
                 getOrCreateThreadAdapter().updateMessages(
                     newMessages = latestThreadItems, scrollPosition = index, smoothScroll = true
                 )
@@ -1645,8 +1688,9 @@ class ThreadActivity : SimpleActivity() {
         }
 
         val messageSnapshot = messages.toSortedMessages()
-        val items = ArrayList<ThreadItem>()
+        markUnreadMessagesRead(messageSnapshot)
 
+        val items = ArrayList<ThreadItem>()
         val subscriptionIdToSimId = HashMap<Int, String>()
         subscriptionIdToSimId[-1] = "?"
         subscriptionManagerCompat().activeSubscriptionInfoList?.forEachIndexed { index, subscriptionInfo ->
@@ -1655,10 +1699,7 @@ class ThreadActivity : SimpleActivity() {
 
         var prevDateTime = 0
         var prevSIMId = -2
-        var hadUnreadItems = false
-        val cnt = messageSnapshot.size
-        for (i in 0 until cnt) {
-            val message = messageSnapshot.getOrNull(i) ?: continue
+        for (message in messageSnapshot.withReactionsApplied()) {
             // do not show the date/time above every message, only if the difference between the 2 messages is at least MIN_DATE_TIME_DIFF_SECS,
             // or if the message is sent from a different SIM
             if (shouldShowThreadDateTime(message, prevDateTime, prevSIMId)) {
@@ -1676,28 +1717,33 @@ class ThreadActivity : SimpleActivity() {
                 items.add(ThreadSending(message.id))
             }
 
-            if (!message.read) {
-                hadUnreadItems = true
-                markMessageRead(message.id, message.isMMS)
-                conversationsDB.markRead(threadId)
-            }
-
-            if (i == cnt - 1 && (message.type == Telephony.Sms.MESSAGE_TYPE_SENT)) {
-                items.add(
-                    ThreadSent(
-                        messageId = message.id,
-                        delivered = message.status == Telephony.Sms.STATUS_COMPLETE
-                    )
-                )
-            }
             prevSIMId = message.subscriptionId
         }
 
-        if (hadUnreadItems) {
-            bus?.post(Events.RefreshConversations())
+        // the newest message may have been a reaction, drawn on an older message rather than shown
+        // in its own right, and whether it got there is still worth a line at the end of the thread
+        val newest = messageSnapshot.lastOrNull()
+        if (newest != null && newest.type == Telephony.Sms.MESSAGE_TYPE_SENT) {
+            items.add(
+                ThreadSent(
+                    messageId = newest.id,
+                    delivered = newest.status == Telephony.Sms.STATUS_COMPLETE
+                )
+            )
         }
 
         return items
+    }
+
+    private fun markUnreadMessagesRead(messageSnapshot: List<Message>) {
+        val unread = messageSnapshot.filterNot { it.read }
+        if (unread.isEmpty()) {
+            return
+        }
+
+        unread.forEach { markMessageRead(it.id, it.isMMS) }
+        conversationsDB.markRead(threadId)
+        bus?.post(Events.RefreshConversations())
     }
 
     private fun launchActivityForResult(
@@ -2006,6 +2052,54 @@ class ThreadActivity : SimpleActivity() {
     }
 
     /**
+     * Whether a reaction can be sent into this conversation at all.
+     *
+     * Short codes made of letters cannot be replied to, and the recycle bin is a record of what
+     * was thrown away rather than a conversation, so neither gets the row.
+     */
+    private fun canSendReactions(): Boolean {
+        return !isRecycleBin && participants.isNotEmpty() && !isSpecialNumber()
+    }
+
+    /**
+     * Sends a tapback as the ordinary text an iPhone would have sent.
+     *
+     * Nothing is stored about it: the text lands in the conversation like any other, and the next
+     * time the thread is drawn it is read back out and put on the message it quotes.
+     */
+    private fun sendReaction(
+        target: Message,
+        emoji: String,
+        kind: ReactionKind?,
+        remove: Boolean,
+    ) {
+        if (!canSendReactions()) {
+            return
+        }
+
+        val body = formatReaction(kind, emoji, target, remove)
+        val subscriptionId = availableSIMCards.getOrNull(currentSIMCardIndex)?.subscriptionId
+            ?: SmsManager.getDefaultSmsSubscriptionId()
+
+        try {
+            refreshedSinceSent = false
+            sendMessageCompat(body, participants.getAddresses(), subscriptionId, emptyList())
+            ensureBackgroundThread {
+                val existingMessages = messages.toSortedMessages()
+                getMessages(threadId, limit = 1)
+                    .filterNotInByKey(existingMessages) { it.getStableId() }
+                    .forEach { insertOrUpdateMessage(it, scrollToNewest = false) }
+            }
+        } catch (e: Exception) {
+            showErrorToast(e)
+        } catch (e: Error) {
+            showErrorToast(
+                e.localizedMessage ?: getString(org.fossify.commons.R.string.unknown_error_occurred)
+            )
+        }
+    }
+
+    /**
      * Sends a failed message again in place.
      *
      * Passing its id back to the sender makes it reuse that row rather than write a new one, so
@@ -2049,7 +2143,7 @@ class ThreadActivity : SimpleActivity() {
         checkSendMessageAvailability()
     }
 
-    private fun insertOrUpdateMessage(message: Message) {
+    private fun insertOrUpdateMessage(message: Message, scrollToNewest: Boolean = true) {
         val updatedMessages = messages.toSortedMessages().toMutableList()
         val messageIndex = updatedMessages.indexOfFirst { it.id == message.id }
         if (messageIndex != -1) {
@@ -2062,7 +2156,8 @@ class ThreadActivity : SimpleActivity() {
         val newItems = getThreadItems()
         runOnUiThread {
             threadItems = newItems
-            getOrCreateThreadAdapter().updateMessages(newItems, newItems.lastIndex)
+            val scrollPosition = if (scrollToNewest) newItems.lastIndex else -1
+            getOrCreateThreadAdapter().updateMessages(newItems, scrollPosition)
             if (!refreshedSinceSent) {
                 refreshMessages()
             }

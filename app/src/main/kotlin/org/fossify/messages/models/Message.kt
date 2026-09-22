@@ -3,6 +3,7 @@ package org.fossify.messages.models
 import android.provider.Telephony
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import org.fossify.commons.models.SimpleContact
@@ -31,6 +32,18 @@ data class Message(
     @ColumnInfo(name = "subscription_id") var subscriptionId: Int,
     @ColumnInfo(name = "is_scheduled") var isScheduled: Boolean = false
 ) : ThreadItem() {
+
+    /**
+     * The tapbacks drawn on this message, folded in from the texts that carried them.
+     *
+     * Read back out of the conversation rather than stored, so Room has no business with it. Only
+     * the copies the thread is built from ever carry any; the rows themselves stay bare.
+     */
+    @Ignore
+    var reactions: List<MessageReaction> = emptyList()
+
+    /** A separate message carrying [reactions], so the list adapter can tell the two apart. */
+    fun withReactions(reactions: List<MessageReaction>) = copy().also { it.reactions = reactions }
 
     fun isReceivedMessage() = type == Telephony.Sms.MESSAGE_TYPE_INBOX
 
@@ -66,7 +79,8 @@ data class Message(
                 old.senderPhoneNumber == new.senderPhoneNumber &&
                 old.senderName == new.senderName &&
                 old.senderPhotoUri == new.senderPhotoUri &&
-                old.isScheduled == new.isScheduled
+                old.isScheduled == new.isScheduled &&
+                old.reactions == new.reactions
         }
     }
 }

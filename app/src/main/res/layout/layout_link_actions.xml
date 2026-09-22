@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What can be done with one form of a link: the same three actions, twice over. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:baselineAligned="false"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:id="@+id/link_action_open"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="?selectableItemBackgroundBorderless"
+        android:orientation="vertical"
+        android:paddingVertical="@dimen/medium_margin">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/link_action_open_icon"
+            android:layout_width="@dimen/medium_icon_size"
+            android:layout_height="@dimen/medium_icon_size"
+            android:layout_gravity="center"
+            android:background="@drawable/circle_background"
+            android:padding="@dimen/medium_margin"
+            android:src="@drawable/ic_open_in_new_vector"
+            tools:ignore="ContentDescription" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/link_action_open_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/medium_margin"
+            android:text="@string/link_open"
+            android:textAlignment="center"
+            android:textSize="@dimen/normal_text_size" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/link_action_copy"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="?selectableItemBackgroundBorderless"
+        android:orientation="vertical"
+        android:paddingVertical="@dimen/medium_margin">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/link_action_copy_icon"
+            android:layout_width="@dimen/medium_icon_size"
+            android:layout_height="@dimen/medium_icon_size"
+            android:layout_gravity="center"
+            android:background="@drawable/circle_background"
+            android:padding="@dimen/medium_margin"
+            android:src="@drawable/ic_copy_vector"
+            tools:ignore="ContentDescription" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/link_action_copy_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/medium_margin"
+            android:text="@string/link_copy"
+            android:textAlignment="center"
+            android:textSize="@dimen/normal_text_size" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/link_action_share"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="?selectableItemBackgroundBorderless"
+        android:orientation="vertical"
+        android:paddingVertical="@dimen/medium_margin">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/link_action_share_icon"
+            android:layout_width="@dimen/medium_icon_size"
+            android:layout_height="@dimen/medium_icon_size"
+            android:layout_gravity="center"
+            android:background="@drawable/circle_background"
+            android:padding="@dimen/medium_margin"
+            android:src="@drawable/ic_share_vector"
+            tools:ignore="ContentDescription" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/link_action_share_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/medium_margin"
+            android:text="@string/link_share"
+            android:textAlignment="center"
+            android:textSize="@dimen/normal_text_size" />
+    </LinearLayout>
+</LinearLayout>

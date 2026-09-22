@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The pill a tapback sits in, tucked under the corner of the message it belongs to. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <corners android:radius="@dimen/reaction_chip_corner_radius" />
+
+    <solid android:color="@color/activated_item_foreground" />
+
+    <stroke
+        android:width="@dimen/reaction_chip_stroke_width"
+        android:color="@color/activated_item_foreground" />
+
+</shape>

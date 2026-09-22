@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<org.fossify.commons.views.MyTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/reaction_chip"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/reaction_chip_background"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="@dimen/small_margin"
+    android:paddingVertical="@dimen/tiny_margin"
+    android:textSize="@dimen/smaller_text_size"
+    tools:text="❤️ 2" />

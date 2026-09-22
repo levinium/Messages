@@ -16,4 +16,11 @@
     <dimen name="default_keyboard_height">250dp</dimen>
     <dimen name="media_thumbnail_corner_radius">8dp</dimen>
     <dimen name="media_selection_outline_width">3dp</dimen>
+    <dimen name="reaction_option_size">36dp</dimen>
+    <dimen name="reaction_picker_option_size">44dp</dimen>
+    <dimen name="message_actions_corner_radius">16dp</dimen>
+    <dimen name="message_actions_min_width">200dp</dimen>
+    <dimen name="message_action_row_height">48dp</dimen>
+    <dimen name="reaction_chip_corner_radius">12dp</dimen>
+    <dimen name="reaction_chip_stroke_width">1dp</dimen>
 </resources>

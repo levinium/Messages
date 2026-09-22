@@ -11,4 +11,38 @@
     <string name="sms">SMS</string>
     <string name="mms">MMS</string>
     <string name="message_details_sim">SIM</string>
+
+    <!-- Offered beyond the six standard tapbacks, which already have a row of their own. -->
+    <string-array name="reaction_emoji">
+        <item>😀</item>
+        <item>😅</item>
+        <item>🥲</item>
+        <item>😍</item>
+        <item>🥰</item>
+        <item>😘</item>
+        <item>😎</item>
+        <item>🤔</item>
+        <item>😮</item>
+        <item>😢</item>
+        <item>😭</item>
+        <item>😡</item>
+        <item>🙏</item>
+        <item>👏</item>
+        <item>🙌</item>
+        <item>🤝</item>
+        <item>💪</item>
+        <item>👀</item>
+        <item>🎉</item>
+        <item>🔥</item>
+        <item>💯</item>
+        <item>⭐</item>
+        <item>✅</item>
+        <item>❌</item>
+        <item>💔</item>
+        <item>😴</item>
+        <item>🤷</item>
+        <item>🍀</item>
+        <item>🎂</item>
+        <item>🤯</item>
+    </string-array>
 </resources>
