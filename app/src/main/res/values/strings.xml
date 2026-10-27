@@ -104,6 +104,7 @@
     <string name="pick_a_reaction">Pick a reaction</string>
     <string name="reaction_by">%1$s by %2$s</string>
     <string name="select_messages">Select</string>
+    <string name="message_options">Message options</string>
     <!-- Notifications -->
     <string name="channel_received_sms">Received SMS</string>
     <string name="new_message">New message</string>

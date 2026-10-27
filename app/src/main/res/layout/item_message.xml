@@ -66,6 +66,21 @@
             tools:drawableEndCompat="@drawable/scheduled_message_icon"
             tools:text="Message content" />
 
+        <ImageView
+            android:id="@+id/thread_message_more"
+            android:layout_width="@dimen/message_more_button_size"
+            android:layout_height="@dimen/message_more_button_size"
+            android:layout_alignBottom="@+id/thread_message_body"
+            android:layout_marginHorizontal="@dimen/small_margin"
+            android:layout_marginBottom="@dimen/small_margin"
+            android:layout_toEndOf="@+id/thread_message_body"
+            android:background="@drawable/message_more_background"
+            android:contentDescription="@string/message_options"
+            android:padding="@dimen/tiny_margin"
+            android:src="@drawable/ic_more_horiz_vector"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
         <LinearLayout
             android:id="@+id/thread_message_reactions"
             android:layout_width="wrap_content"

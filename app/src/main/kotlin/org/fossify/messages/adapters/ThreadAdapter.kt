@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.text.Spanned
 import android.text.style.URLSpan
+import android.view.GestureDetector
 import android.view.MotionEvent
 import android.util.TypedValue
 import android.view.Menu
@@ -40,6 +41,7 @@ import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisible
 import org.fossify.commons.extensions.beVisibleIf
+import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.copyToClipboard
 import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.commons.extensions.getContrastColor
@@ -146,6 +148,11 @@ class ThreadAdapter(
     private val maxChatBubbleWidth =
         ((activity.usableScreenSize.x - chatBubbleInset) * BUBBLE_WIDTH_RATIO).toInt()
 
+    /** The ⋯ circle beside an open message, with the gap on either side of it. */
+    private val moreButtonSpace =
+        activity.resources.getDimensionPixelSize(R.dimen.message_more_button_size) +
+                activity.resources.getDimensionPixelSize(org.fossify.commons.R.dimen.small_margin) * 2
+
     /** The one message currently tapped open, showing its timestamp and selectable at a larger size. */
     private var expandedMessageId: Long? = null
 
@@ -173,6 +180,9 @@ class ThreadAdapter(
         private const val REACTION_TEXT_SCALE = 0.8f
         private const val REACTION_FILL_ALPHA = 0.15f
         private const val REACTION_STROKE_ALPHA = 0.35f
+
+        /** The ⋯ beside an open message is outlined just firmly enough to find. */
+        private const val MORE_STROKE_ALPHA = 0.4f
 
         /** Status lines sit beneath the message and should never compete with it. */
         private const val STATUS_TEXT_SCALE = 0.8f
@@ -509,6 +519,11 @@ class ThreadAdapter(
         rebindInPlace(listOf(expanded))
     }
 
+    private fun maxBodyWidth(message: Message): Int {
+        val photoWidth = if (message.isReceivedMessage()) senderPhotoWidth else 0
+        return maxChatBubbleWidth - photoWidth - moreButtonSpace
+    }
+
     private fun bodyTextSize(isExpanded: Boolean, isEmojiOnly: Boolean) = when {
         isEmojiOnly -> fontSize * EMOJI_SCALE
         isExpanded -> fontSize * READING_SCALE
@@ -521,15 +536,22 @@ class ThreadAdapter(
     }
 
     /**
-     * Long press on the text of a message, which means the same thing whether it is open or not:
-     * the message's own menu, and on a link the link's.
-     *
-     * Android's own selection handles used to have the open state to themselves, so that part of
-     * a message could be copied in place. Select text in the menu does that job now, and one
-     * gesture doing one thing is worth more than the shortcut was.
+     * Long press on the text of a message. On a link it is always the link's menu; otherwise a
+     * closed message opens its own menu, and an open one starts Android's selection handles so
+     * part of it can be copied in place. The open message's menu sits behind its ⋯ button instead.
      */
     @SuppressLint("ClickableViewAccessibility")
-    private fun setupBodyGestures(body: MyTextView, message: Message, holder: ViewHolder) {
+    private fun setupBodyGestures(
+        body: MyTextView,
+        isExpanded: Boolean,
+        message: Message,
+        holder: ViewHolder,
+    ) {
+        if (isExpanded) {
+            setupSelectableBodyGestures(body, message, holder)
+            return
+        }
+
         var touchX = 0f
         var touchY = 0f
         var heldALink = false
@@ -561,6 +583,47 @@ class ThreadAdapter(
             }
             true
         }
+
+        body.setOnClickListener {
+            holder.viewClicked(message)
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupSelectableBodyGestures(body: MyTextView, message: Message, holder: ViewHolder) {
+        // Selectable text routes touches through Android's editor, which never calls
+        // OnClickListener, so the tap that closes the message has to be spotted here instead.
+        val gestureDetector = GestureDetector(
+            activity,
+            object : GestureDetector.SimpleOnGestureListener() {
+                override fun onSingleTapUp(event: MotionEvent): Boolean {
+                    // a tap while something is highlighted only clears the highlight, as anywhere else
+                    if (!body.hasSelection() && body.urlAt(event.x, event.y) == null) {
+                        holder.viewClicked(message)
+                    }
+                    return false
+                }
+
+                override fun onLongPress(event: MotionEvent) {
+                    val url = body.urlAt(event.x, event.y) ?: return
+                    showLinkOptions(url)
+                }
+            }
+        )
+
+        var touchX = 0f
+        var touchY = 0f
+        body.setOnTouchListener { _, event ->
+            touchX = event.x
+            touchY = event.y
+            gestureDetector.onTouchEvent(event)
+            false // the editor still gets the event, so selection handles keep working
+        }
+
+        body.setOnLongClickListener {
+            // Swallow the long press only on a link, where the menu above has already opened.
+            body.urlAt(touchX, touchY) != null
+        }
     }
 
     private fun MyTextView.urlAt(x: Float, y: Float): String? {
@@ -583,15 +646,31 @@ class ThreadAdapter(
             val isEmojiOnly = message.body.isEmojiOnly() &&
                     message.body.emojiCount() <= MAX_ENLARGED_EMOJI
 
+            val showMore = isExpanded && message.body.isNotEmpty()
             threadMessageBody.apply {
+                // Before the text goes in, because setting text is what puts the link handling
+                // back once a message stops being selectable.
+                setTextIsSelectable(isExpanded)
                 text = message.body
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, bodyTextSize(isExpanded, isEmojiOnly))
                 beVisibleIf(message.body.isNotEmpty())
-                setupBodyGestures(this, message, holder)
+                // leave room beside a full-width bubble for the ⋯ button, or it is pushed out of sight
+                maxWidth = if (showMore) maxBodyWidth(message) else Int.MAX_VALUE
+                setupBodyGestures(this, isExpanded, message, holder)
+            }
 
-                setOnClickListener {
-                    holder.viewClicked(message)
+            threadMessageMore.apply {
+                beVisibleIf(showMore)
+                applyColorFilter(textColor)
+                // cut out of the thread's own background, so only the outline sets it apart
+                (background.mutate() as GradientDrawable).apply {
+                    setColor(activity.getProperBackgroundColor())
+                    setStroke(
+                        resources.getDimensionPixelSize(R.dimen.reaction_chip_stroke_width),
+                        textColor.adjustAlpha(MORE_STROKE_ALPHA)
+                    )
                 }
+                setOnClickListener { showMessageActions(holder, message, threadMessageBody) }
             }
 
             threadMessageHolder.setBackgroundColor(
@@ -698,6 +777,12 @@ class ThreadAdapter(
                     removeRule(RelativeLayout.END_OF)
                     addRule(RelativeLayout.ALIGN_PARENT_END)
                 }
+            }
+
+            // and the ⋯ button goes on the open side of the bubble, which here is its left
+            threadMessageMore.updateLayoutParams<RelativeLayout.LayoutParams> {
+                removeRule(RelativeLayout.END_OF)
+                addRule(RelativeLayout.START_OF, threadMessageBody.id)
             }
 
             threadMessageBody.apply {
