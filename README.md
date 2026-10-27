@@ -39,7 +39,8 @@ this repo.
 
 ## React to a message, the way an iPhone does
 
-Long press a message and pick a tapback — ❤️ 👍 👎 😂 ‼️ ❓, or **+** for any other emoji. It lands on
+Long press a message — or tap **⋯** beside one you have opened — and pick a tapback: ❤️ 👍 👎 😂 ‼️
+❓, or **+** for any other emoji. It lands on
 the message it belongs to rather than arriving as a message of its own, and picking the one you
 already chose takes it back off. One reaction per person per message, as on an iPhone.
 
@@ -58,9 +59,12 @@ way their own phone would have written it, which is as far as SMS goes.
 ## Everything you can do to a message, in one place
 
 Long press a message for its own menu: the tapback row across the top, then copy, forward, share,
-select text, properties and delete. **Select** is in there too, which is how you reach the old
-multi-select when you want to act on several messages at once. On a message you have tapped open,
-the same menu is behind the **⋯** button beside it, since long press there selects text instead.
+select text, save (for attachments), properties and delete. **Select** is in there too, which is how
+you reach the old multi-select when you want to act on several messages at once.
+
+Once a message is [tapped open](#tap-a-message-to-read-it), long press on its text selects text
+instead, so the same menu moves to a small **⋯** circle beside the bubble — to the right of a
+received message, to the left of a sent one. Pictures keep long press for the menu either way.
 
 <img src="docs/screenshots/message-menu.png" width="320" alt="The long press menu open beside a message">
 
@@ -103,9 +107,13 @@ dated. Both of those, and the spelled-out format itself, can be turned off in Se
 
 ## Tap a message to read it
 
-Tapping a message opens it: larger text with its timestamp underneath. Tapping it again closes it.
-While it is open, long press the text to select part of it in place with Android's own handles, and
-use the **⋯** button beside it for the message's menu.
+Tapping a message opens it: larger text with its timestamp underneath, and a **⋯** beside it for
+the message's menu. Tapping it again closes it.
+
+While it is open, long press the text to **select part of it in place** with Android's own handles —
+a phone number, an address, one line out of several. Tapping while something is highlighted only
+clears the highlight; it does not close the message. A long pressed link still offers its own
+options rather than selecting.
 
 Messages that are nothing but emoji are drawn large, the way every other messaging app draws them.
 
@@ -192,7 +200,9 @@ The two original fixes are reported upstream:
 
 ## Building from source
 
-Requires JDK 17 or newer and the Android SDK (compileSdk 36).
+Requires JDK 17 or newer and the Android SDK (compileSdk 36). Gradle finds the SDK through
+`ANDROID_HOME`, or through `sdk.dir` in a `local.properties` file at the project root (it is
+gitignored).
 
 ```sh
 ./gradlew assembleFossDebug      # debug build, installs alongside as .debug
