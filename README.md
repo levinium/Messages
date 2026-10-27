@@ -20,7 +20,7 @@ fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 ## Download
 
-[**LeviniumMessages-2.2.0.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+[**LeviniumMessages-2.2.1.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
 
 Built on Fossify Messages 1.9.1.
 
@@ -59,7 +59,8 @@ way their own phone would have written it, which is as far as SMS goes.
 
 Long press a message for its own menu: the tapback row across the top, then copy, forward, share,
 select text, properties and delete. **Select** is in there too, which is how you reach the old
-multi-select when you want to act on several messages at once.
+multi-select when you want to act on several messages at once. On a message you have tapped open,
+the same menu is behind the **⋯** button beside it, since long press there selects text instead.
 
 <img src="docs/screenshots/message-menu.png" width="320" alt="The long press menu open beside a message">
 
@@ -103,8 +104,8 @@ dated. Both of those, and the spelled-out format itself, can be turned off in Se
 ## Tap a message to read it
 
 Tapping a message opens it: larger text with its timestamp underneath. Tapping it again closes it.
-Copying part of a message rather than the whole thing is **Select text**, in the long press menu
-above.
+While it is open, long press the text to select part of it in place with Android's own handles, and
+use the **⋯** button beside it for the message's menu.
 
 Messages that are nothing but emoji are drawn large, the way every other messaging app draws them.
 
