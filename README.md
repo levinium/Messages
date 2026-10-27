@@ -117,7 +117,7 @@ options rather than selecting.
 
 Messages that are nothing but emoji are drawn large, the way every other messaging app draws them.
 
-<img src="docs/screenshots/reading-mode.png" width="320" alt="A message opened to show its timestamp">
+<img src="docs/screenshots/reading-mode.png" width="320" alt="A message opened to show its timestamp, with the ⋯ menu button beside it">
 
 ## Pictures stay in the app
 
