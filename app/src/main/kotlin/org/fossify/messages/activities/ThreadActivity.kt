@@ -110,12 +110,14 @@ import org.fossify.messages.adapters.AttachmentsAdapter
 import org.fossify.messages.adapters.AutoCompleteTextViewAdapter
 import org.fossify.messages.adapters.ThreadAdapter
 import org.fossify.messages.adapters.ThreadReactionActions
+import org.fossify.messages.adapters.ThreadSpamReport
 import org.fossify.messages.databinding.ActivityThreadBinding
 import org.fossify.messages.databinding.ItemSelectedContactBinding
 import org.fossify.messages.dialogs.GroupMessageSendDialog
 import org.fossify.messages.dialogs.InvalidNumberDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.dialogs.ScheduleMessageDialog
+import org.fossify.messages.dialogs.SpamReportPickerDialog
 import org.fossify.messages.extensions.clearExpiredScheduledMessages
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
@@ -186,6 +188,8 @@ import org.fossify.messages.helpers.MEDIA_ITEMS
 import org.fossify.messages.helpers.THREAD_TITLE
 import org.fossify.messages.helpers.VisibleScreenTracker
 import org.fossify.messages.helpers.SPAM_REPORT_NUMBER
+import org.fossify.messages.helpers.reportableAsSpam
+import org.fossify.messages.helpers.suggestedSpamReport
 import org.fossify.messages.helpers.STOP_KEYWORD
 import org.fossify.messages.helpers.isAutomatedThread
 import org.fossify.messages.helpers.isShortCode
@@ -414,12 +418,9 @@ class ThreadActivity : SimpleActivity() {
             findItem(R.id.manage_people).isVisible = !isSpecialNumber() && !isRecycleBin
             findItem(R.id.view_media).isVisible = threadMedia().isNotEmpty()
 
-            // Nobody reports a conversation with a saved contact, and STOP means nothing to a
-            // sender that is not a short code.
-            val isStranger = participants.size == 1 && !isKnownContact() && !isRecycleBin
             findItem(R.id.report_spam).isVisible =
-                isStranger && messages.any { it.isReceivedMessage() }
-            findItem(R.id.reply_stop).isVisible = isStranger && isShortCodeThread()
+                canReportSpam() && messages.reportableAsSpam().isNotEmpty()
+            findItem(R.id.reply_stop).isVisible = canReportSpam() && isShortCodeThread()
             findItem(R.id.mark_as_unread).isVisible = threadItems.isNotEmpty() && !isRecycleBin
 
             // allow saving number in cases when we don't have it stored yet
@@ -440,12 +441,39 @@ class ThreadActivity : SimpleActivity() {
      * about a sender, so that is what this offers: the message, addressed and ready to send.
      */
     private fun askReportSpam() {
-        val body = messages.lastOrNull { it.isReceivedMessage() }?.body
-        if (body.isNullOrBlank()) {
-            toast(R.string.report_spam_nothing_to_report)
-            return
+        val reportable = messages.reportableAsSpam()
+        when {
+            reportable.isEmpty() -> toast(R.string.report_spam_nothing_to_report)
+            reportable.size == 1 -> askReportSpam(reportable.first())
+            else -> pickSpamReport(reportable)
+        }
+    }
+
+    /**
+     * More than one message could be the spam, so you say which. The likeliest is already
+     * picked, which is not always the newest: see [suggestedSpamReport].
+     *
+     * Only the newest few are offered, plus the suggestion if it is older than those; anything
+     * further back is a long press on the message itself.
+     */
+    private fun pickSpamReport(reportable: List<Message>) {
+        val suggested = messages.suggestedSpamReport()
+        var offered = reportable.take(SPAM_REPORT_PICKER_LIMIT)
+        if (suggested != null && suggested !in offered) {
+            offered = offered.dropLast(1) + suggested
         }
 
+        SpamReportPickerDialog(
+            activity = this,
+            messages = offered.sortedBy { it.date },
+            selected = suggested
+        ) { picked ->
+            askReportSpam(picked)
+        }
+    }
+
+    private fun askReportSpam(message: Message) {
+        val body = message.body
         ConfirmationDialog(
             activity = this,
             message = getString(R.string.report_spam_confirmation),
@@ -825,6 +853,10 @@ class ThreadActivity : SimpleActivity() {
                     send = { message, emoji, kind, remove ->
                         sendReaction(message, emoji, kind, remove)
                     }
+                ),
+                spamReport = ThreadSpamReport(
+                    isAvailable = { canReportSpam() },
+                    report = { message -> askReportSpam(message) }
                 ),
                 deleteMessages = { messages, toRecycleBin, fromRecycleBin ->
                     deleteMessages(
@@ -1366,6 +1398,14 @@ class ThreadActivity : SimpleActivity() {
         }
 
         return messages.isAutomatedThread(isKnownContact())
+    }
+
+    /**
+     * Nobody reports a conversation with a saved contact, and STOP means nothing to a sender that
+     * is not a short code, so both are only offered to a lone stranger.
+     */
+    private fun canReportSpam(): Boolean {
+        return participants.size == 1 && !isKnownContact() && !isRecycleBin
     }
 
     /** A saved contact has a name of their own; a stranger is shown as their number. */
@@ -2655,6 +2695,7 @@ class ThreadActivity : SimpleActivity() {
         private const val TYPE_DELETE = 16
         private const val MIN_DATE_TIME_DIFF_SECS = 300
         private const val SCROLL_TO_BOTTOM_FAB_LIMIT = 20
+        private const val SPAM_REPORT_PICKER_LIMIT = 10
         private const val PREFETCH_THRESHOLD = 45
     }
 }

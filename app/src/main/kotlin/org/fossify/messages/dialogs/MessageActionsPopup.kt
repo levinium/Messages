@@ -152,17 +152,25 @@ class MessageActionsPopup(
 
     /**
      * Where the menu goes: on the bubble's own side, and on whichever side of it has the room.
+     *
+     * A menu taller than the screen, which a phone held sideways manages easily, is cut to fit
+     * and its actions scroll.
      */
     private fun placeBeside(): Pair<Int, Int> {
         val unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         binding.root.measure(unspecified, unspecified)
         val width = binding.root.measuredWidth
-        val height = binding.root.measuredHeight
 
         val screen = activity.realScreenSize
         val margin = activity.resources.getDimensionPixelSize(
             org.fossify.commons.R.dimen.activity_margin
         )
+
+        val maxHeight = screen.y - margin * 2
+        val height = binding.root.measuredHeight.coerceAtMost(maxHeight)
+        if (height == maxHeight) {
+            popup.height = maxHeight
+        }
 
         val bounds = IntArray(2)
         anchor.getLocationOnScreen(bounds)

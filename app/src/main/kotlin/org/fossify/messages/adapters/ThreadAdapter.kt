@@ -124,6 +124,7 @@ class ThreadAdapter(
     val retryMessage: (messageId: Long) -> Unit,
     val isRecycleBin: Boolean,
     val reactionActions: ThreadReactionActions,
+    val spamReport: ThreadSpamReport,
     val deleteMessages: (messages: List<Message>, toRecycleBin: Boolean, fromRecycleBin: Boolean) -> Unit
 ) : MyRecyclerViewListAdapter<ThreadItem>(activity, recyclerView, ThreadItemDiffCallback(), itemClick) {
     private var fontSize = activity.getTextSize()
@@ -938,6 +939,13 @@ class ThreadAdapter(
             org.fossify.commons.R.drawable.ic_select_all_vector,
             R.string.select_messages
         ) { holder.viewLongClicked() }
+
+        if (message.isReceivedMessage() && hasText && spamReport.isAvailable()) {
+            actions += MessageAction(
+                org.fossify.commons.R.drawable.ic_block_vector,
+                R.string.report_spam
+            ) { spamReport.report(message) }
+        }
 
         if (isRecycleBin) {
             actions += MessageAction(
