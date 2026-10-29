@@ -20,7 +20,7 @@ fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 ## Download
 
-[**LeviniumMessages-2.2.1.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+[**LeviniumMessages-2.2.2.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
 
 Built on Fossify Messages 1.9.1.
 
@@ -59,7 +59,7 @@ way their own phone would have written it, which is as far as SMS goes.
 ## Everything you can do to a message, in one place
 
 Long press a message for its own menu: the tapback row across the top, then copy, forward, share,
-select text, save (for attachments), properties and delete. **Select** is in there too, which is how
+select text, save (for attachments), properties, report spam (from a stranger) and delete. **Select** is in there too, which is how
 you reach the old multi-select when you want to act on several messages at once.
 
 Once a message is [tapped open](#tap-a-message-to-read-it), long press on its text selects text
@@ -160,6 +160,12 @@ There is no API to report a message as spam — not on Android, not to any servi
 reach. What does exist is **7726** (SPAM), which the GSMA reserves so a carrier can be told about a
 sender. The menu explains that, then opens a conversation with 7726 carrying the offending message,
 ready for you to send. Nothing is sent without you pressing send.
+
+Report spam is in a message's own long press menu, which reports exactly that message. The one in
+the conversation menu asks which of the ten newest messages you mean when there is more than one,
+with the likeliest already picked: the newest, unless you have replied STOP, in which case it is the
+newest from before that, since what arrives afterwards is only the sender confirming you are
+unsubscribed.
 
 **Reply STOP** sits beside it, shown only for short codes. A legitimate service is obliged to honor
 it; anybody else just learns that a person is reading what they send, which the app says before it
