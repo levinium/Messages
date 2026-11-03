@@ -20,7 +20,7 @@ fork [here](https://github.com/levinium/Messages/issues) rather than to them.
 
 ## Download
 
-[**LeviniumMessages-2.2.2.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
+[**LeviniumMessages-2.2.3.apk**](https://github.com/levinium/Messages/releases/latest) — 7.2 MB
 
 Built on Fossify Messages 1.9.1.
 
