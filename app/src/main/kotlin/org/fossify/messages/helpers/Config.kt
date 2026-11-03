@@ -1,8 +1,11 @@
 package org.fossify.messages.helpers
 
 import android.content.Context
+import kotlinx.serialization.json.Json
 import org.fossify.commons.helpers.BaseConfig
 import org.fossify.messages.extensions.getDefaultKeyboardHeight
+import org.fossify.messages.models.BlockCondition
+import org.fossify.messages.models.BlockRule
 import org.fossify.messages.models.Conversation
 
 class Config(context: Context) : BaseConfig(context) {
@@ -126,17 +129,41 @@ class Config(context: Context) : BaseConfig(context) {
             pinnedConversations.minus(conversations.map { it.threadId.toString() })
     }
 
-    var blockedKeywords: Set<String>
+    /**
+     * Until the first rule is saved, the keywords blocked before rules existed are read back as
+     * one-condition rules. Saving writes them out as rules, and the old keyword set is left alone.
+     */
+    var blockRules: List<BlockRule>
+        get() {
+            val saved = prefs.getString(BLOCK_RULES, null)
+            return if (saved == null) {
+                // The id comes from the keyword, so the same rule keeps its id from one read to the next.
+                legacyBlockedKeywords.sorted().map {
+                    BlockRule(
+                        id = "keyword:$it",
+                        conditions = listOf(BlockCondition(BlockCondition.Type.CONTAINS, it))
+                    )
+                }
+            } else {
+                runCatching { blockRulesJson.decodeFromString<List<BlockRule>>(saved) }.getOrDefault(emptyList())
+            }
+        }
+        set(rules) = prefs.edit().putString(BLOCK_RULES, blockRulesJson.encodeToString(rules)).apply()
+
+    fun saveBlockRule(rule: BlockRule) {
+        val rules = blockRules
+        val index = rules.indexOfFirst { it.id == rule.id }
+        blockRules = if (index == -1) rules + rule else rules.toMutableList().apply { set(index, rule) }
+    }
+
+    fun removeBlockRules(ids: Set<String>) {
+        blockRules = blockRules.filterNot { it.id in ids }
+    }
+
+    private val legacyBlockedKeywords: Set<String>
         get() = prefs.getStringSet(BLOCKED_KEYWORDS, HashSet<String>())!!
-        set(blockedKeywords) = prefs.edit().putStringSet(BLOCKED_KEYWORDS, blockedKeywords).apply()
 
-    fun addBlockedKeyword(keyword: String) {
-        blockedKeywords = blockedKeywords.plus(keyword)
-    }
-
-    fun removeBlockedKeyword(keyword: String) {
-        blockedKeywords = blockedKeywords.minus(keyword)
-    }
+    private val blockRulesJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     var exportSms: Boolean
         get() = prefs.getBoolean(EXPORT_SMS, true)

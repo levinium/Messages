@@ -19,13 +19,14 @@ import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.interfaces.RefreshRecyclerViewListener
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ActivityManageBlockedKeywordsBinding
-import org.fossify.messages.dialogs.AddBlockedKeywordDialog
+import org.fossify.messages.dialogs.BlockRuleDialog
 import org.fossify.messages.dialogs.ExportBlockedKeywordsDialog
 import org.fossify.messages.dialogs.ManageBlockedKeywordsAdapter
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.toArrayList
 import org.fossify.messages.helpers.BlockedKeywordsExporter
 import org.fossify.messages.helpers.BlockedKeywordsImporter
+import org.fossify.messages.models.BlockRule
 import java.io.FileOutputStream
 import java.io.OutputStream
 
@@ -84,7 +85,7 @@ class ManageBlockedKeywordsActivity : SimpleActivity(), RefreshRecyclerViewListe
     }
 
     private val createDocument =
-        registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             try {
                 val outputStream = uri?.let { contentResolver.openOutputStream(it) }
                 if (outputStream != null) {
@@ -107,7 +108,8 @@ class ManageBlockedKeywordsActivity : SimpleActivity(), RefreshRecyclerViewListe
         }
 
     private fun tryImportBlockedKeywords() {
-        val mimeType = "text/plain"
+        // Older exports are plain text and newer ones JSON, and file pickers disagree about both.
+        val mimeType = "*/*"
         try {
             getContent.launch(mimeType)
         } catch (_: ActivityNotFoundException) {
@@ -156,11 +158,11 @@ class ManageBlockedKeywordsActivity : SimpleActivity(), RefreshRecyclerViewListe
 
     private fun exportBlockedKeywordsTo(outputStream: OutputStream?) {
         ensureBackgroundThread {
-            val blockedKeywords = config.blockedKeywords.toArrayList()
-            if (blockedKeywords.isEmpty()) {
+            val blockRules = config.blockRules
+            if (blockRules.isEmpty()) {
                 toast(org.fossify.commons.R.string.no_entries_for_exporting)
             } else {
-                BlockedKeywordsExporter.exportBlockedKeywords(blockedKeywords, outputStream) {
+                BlockedKeywordsExporter.exportBlockRules(blockRules, outputStream) {
                     toast(
                         when (it) {
                             ExportResult.EXPORT_OK -> org.fossify.commons.R.string.exporting_successful
@@ -197,27 +199,27 @@ class ManageBlockedKeywordsActivity : SimpleActivity(), RefreshRecyclerViewListe
 
     private fun updateBlockedKeywords() {
         ensureBackgroundThread {
-            val blockedKeywords = config.blockedKeywords.sorted().toArrayList()
+            val blockRules = config.blockRules.toArrayList()
             runOnUiThread {
                 ManageBlockedKeywordsAdapter(
                     activity = this,
-                    blockedKeywords = blockedKeywords,
+                    blockRules = blockRules,
                     listener = this,
                     recyclerView = binding.manageBlockedKeywordsList
                 ) {
-                    addOrEditBlockedKeyword(it as String)
+                    addOrEditBlockedKeyword(it as BlockRule)
                 }.apply {
                     binding.manageBlockedKeywordsList.adapter = this
                 }
 
-                binding.manageBlockedKeywordsPlaceholder.beVisibleIf(blockedKeywords.isEmpty())
-                binding.manageBlockedKeywordsPlaceholder2.beVisibleIf(blockedKeywords.isEmpty())
+                binding.manageBlockedKeywordsPlaceholder.beVisibleIf(blockRules.isEmpty())
+                binding.manageBlockedKeywordsPlaceholder2.beVisibleIf(blockRules.isEmpty())
             }
         }
     }
 
-    private fun addOrEditBlockedKeyword(keyword: String? = null) {
-        AddBlockedKeywordDialog(this, keyword) {
+    private fun addOrEditBlockedKeyword(rule: BlockRule? = null) {
+        BlockRuleDialog(this, rule) {
             updateBlockedKeywords()
         }
     }

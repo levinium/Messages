@@ -173,6 +173,36 @@ puts STOP in the message box.
 
 <img src="docs/screenshots/report-spam.png" width="320" alt="The report spam dialog">
 
+## Blocking rules, not just keywords
+
+A blocked keyword in Fossify blocks every message that contains it anywhere, which is no use for a
+word that also turns up in messages you want. Here a blocked keyword is a rule, laid out the way an
+email rule is: conditions in cards joined by **AND**, each holding a list of words joined by **OR**.
+"Contains the word *winner* or *prize*, AND contains *claim* or *click*" blocks the prize scam and
+leaves a friend's "we were the winners tonight" alone.
+
+<img src="docs/screenshots/block-rules.png" width="320" alt="The blocked keywords list, each rule written out as it reads"> <img src="docs/screenshots/block-rule.png" width="320" alt="A rule with two conditions, each holding two words">
+
+Each condition is one of:
+
+- **Contains**: the word or phrase appears anywhere, inside longer words too.
+- **Contains the word**: it appears as a whole word, so *car* does not match *scar*.
+- **Doesn't contain**: none of the words appear. A rule needs at least one condition that looks for
+  something, or it would block almost everything.
+- **Matches pattern**: a regular expression. One that will not compile, or that would match every
+  message, is flagged before it can be saved, and one that runs too long on a message gives up and
+  lets it through.
+
+Phrases are typed as they are, spaces and all, and any run of whitespace matches any other.
+Matching ignores case unless the rule says **Match upper and lower case exactly**, and a rule can be
+limited to **numbers not in your contacts**. A box at the bottom of the editor tries the rule on any
+message you paste in, ticking each condition as it goes.
+
+<img src="docs/screenshots/block-rule-test.png" width="320" alt="The rule tried on a sample message, which it would block">
+
+Keywords you were already blocking carry over as one-condition rules. Export writes the rules as
+JSON, and import takes either that or a keyword list exported from Fossify.
+
 ## Smaller things
 
 - **Search inside a conversation** from the toolbar, over everything the app has stored for it

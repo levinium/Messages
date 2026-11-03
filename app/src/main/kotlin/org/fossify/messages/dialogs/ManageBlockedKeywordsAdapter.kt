@@ -1,5 +1,6 @@
 package org.fossify.messages.dialogs
 
+import android.content.Context
 import android.view.*
 import androidx.appcompat.widget.PopupMenu
 import org.fossify.commons.activities.BaseSimpleActivity
@@ -13,9 +14,11 @@ import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
 import org.fossify.messages.databinding.ItemManageBlockedKeywordBinding
 import org.fossify.messages.extensions.config
+import org.fossify.messages.models.BlockCondition.Type
+import org.fossify.messages.models.BlockRule
 
 class ManageBlockedKeywordsAdapter(
-    activity: BaseSimpleActivity, var blockedKeywords: ArrayList<String>, val listener: RefreshRecyclerViewListener?,
+    activity: BaseSimpleActivity, var blockRules: ArrayList<BlockRule>, val listener: RefreshRecyclerViewListener?,
     recyclerView: MyRecyclerView, itemClick: (Any) -> Unit
 ) : MyRecyclerViewAdapter(activity, recyclerView, itemClick) {
     init {
@@ -41,13 +44,13 @@ class ManageBlockedKeywordsAdapter(
         }
     }
 
-    override fun getSelectableItemCount() = blockedKeywords.size
+    override fun getSelectableItemCount() = blockRules.size
 
     override fun getIsItemSelectable(position: Int) = true
 
-    override fun getItemSelectionKey(position: Int) = blockedKeywords.getOrNull(position)?.hashCode()
+    override fun getItemSelectionKey(position: Int) = blockRules.getOrNull(position)?.id?.hashCode()
 
-    override fun getItemKeyPosition(key: Int) = blockedKeywords.indexOfFirst { it.hashCode() == key }
+    override fun getItemKeyPosition(key: Int) = blockRules.indexOfFirst { it.id.hashCode() == key }
 
     override fun onActionModeCreated() {}
 
@@ -59,23 +62,23 @@ class ManageBlockedKeywordsAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val blockedKeyword = blockedKeywords[position]
-        holder.bindView(blockedKeyword, allowSingleClick = true, allowLongClick = true) { itemView, _ ->
-            setupView(itemView, blockedKeyword)
+        val rule = blockRules[position]
+        holder.bindView(rule, allowSingleClick = true, allowLongClick = true) { itemView, _ ->
+            setupView(itemView, rule)
         }
         bindViewHolder(holder)
     }
 
-    override fun getItemCount() = blockedKeywords.size
+    override fun getItemCount() = blockRules.size
 
-    private fun getSelectedItems() = blockedKeywords.filter { selectedKeys.contains(it.hashCode()) }
+    private fun getSelectedItems() = blockRules.filter { selectedKeys.contains(it.id.hashCode()) }
 
-    private fun setupView(view: View, blockedKeyword: String) {
+    private fun setupView(view: View, rule: BlockRule) {
         ItemManageBlockedKeywordBinding.bind(view).apply {
             root.setupViewBackground(activity)
-            manageBlockedKeywordHolder.isSelected = selectedKeys.contains(blockedKeyword.hashCode())
+            manageBlockedKeywordHolder.isSelected = selectedKeys.contains(rule.id.hashCode())
             manageBlockedKeywordTitle.apply {
-                text = blockedKeyword
+                text = describeBlockRule(activity, rule)
                 setTextColor(textColor)
             }
 
@@ -85,12 +88,12 @@ class ManageBlockedKeywordsAdapter(
             }
 
             overflowMenuIcon.setOnClickListener {
-                showPopupMenu(overflowMenuAnchor, blockedKeyword)
+                showPopupMenu(overflowMenuAnchor, rule)
             }
         }
     }
 
-    private fun showPopupMenu(view: View, blockedKeyword: String) {
+    private fun showPopupMenu(view: View, rule: BlockRule) {
         finishActMode()
         val theme = activity.getPopupMenuTheme()
         val contextTheme = ContextThemeWrapper(activity, theme)
@@ -98,16 +101,16 @@ class ManageBlockedKeywordsAdapter(
         PopupMenu(contextTheme, view, Gravity.END).apply {
             inflate(getActionMenuId())
             setOnMenuItemClickListener { item ->
-                val blockedKeywordId = blockedKeyword.hashCode()
+                val ruleKey = rule.id.hashCode()
                 when (item.itemId) {
                     R.id.cab_copy_keyword -> {
-                        executeItemMenuOperation(blockedKeywordId) {
+                        executeItemMenuOperation(ruleKey) {
                             copyKeywordToClipboard()
                         }
                     }
 
                     R.id.cab_delete -> {
-                        executeItemMenuOperation(blockedKeywordId) {
+                        executeItemMenuOperation(ruleKey) {
                             deleteSelection()
                         }
                     }
@@ -118,31 +121,51 @@ class ManageBlockedKeywordsAdapter(
         }
     }
 
-    private fun executeItemMenuOperation(blockedKeywordId: Int, callback: () -> Unit) {
-        selectedKeys.add(blockedKeywordId)
+    private fun executeItemMenuOperation(ruleKey: Int, callback: () -> Unit) {
+        selectedKeys.add(ruleKey)
         callback()
-        selectedKeys.remove(blockedKeywordId)
+        selectedKeys.remove(ruleKey)
     }
 
+    /** A single word or phrase copies as itself; a rule with more to it copies as it reads. */
     private fun copyKeywordToClipboard() {
-        val selectedKeyword = getSelectedItems().firstOrNull() ?: return
-        activity.copyToClipboard(selectedKeyword)
+        val rule = getSelectedItems().firstOrNull() ?: return
+        val single = rule.conditions.singleOrNull()?.values?.singleOrNull()
+        activity.copyToClipboard(single ?: describeBlockRule(activity, rule))
         finishActMode()
     }
 
     private fun deleteSelection() {
-        val deleteBlockedKeywords = HashSet<String>(selectedKeys.size)
         val positions = getSelectedItemPositions()
+        val deleted = getSelectedItems()
+        activity.config.removeBlockRules(deleted.map { it.id }.toSet())
 
-        getSelectedItems().forEach {
-            deleteBlockedKeywords.add(it)
-            activity.config.removeBlockedKeyword(it)
-        }
-
-        blockedKeywords.removeAll(deleteBlockedKeywords)
+        blockRules.removeAll(deleted.toSet())
         removeSelectedItems(positions)
-        if (blockedKeywords.isEmpty()) {
+        if (blockRules.isEmpty()) {
             listener?.refreshItems()
         }
     }
+}
+
+/** One line per condition, so "Contains “winner” or “prize”" over "and contains “claim”". */
+fun describeBlockRule(context: Context, rule: BlockRule): String {
+    val conditions = rule.conditions.mapIndexed { index, condition ->
+        val first = index == 0
+        val (opening, following) = when (condition.type) {
+            Type.CONTAINS -> R.string.block_summary_contains to R.string.block_summary_and_contains
+            Type.WORD -> R.string.block_summary_word to R.string.block_summary_and_word
+            Type.NOT_CONTAINS -> R.string.block_summary_not_contains to R.string.block_summary_and_not_contains
+            Type.REGEX -> R.string.block_summary_regex to R.string.block_summary_and_regex
+        }
+        val format = if (first) opening else following
+        val or = " ${context.getString(R.string.block_rule_or)} "
+        val values = condition.values.joinToString(or) { if (condition.type == Type.REGEX) it else "“$it”" }
+        context.getString(format, values)
+    }
+    val options = listOfNotNull(
+        context.getString(R.string.block_summary_match_case).takeIf { rule.matchCase },
+        context.getString(R.string.block_summary_only_unknown).takeIf { rule.onlyUnknownSenders },
+    )
+    return (conditions + options).joinToString("\n")
 }

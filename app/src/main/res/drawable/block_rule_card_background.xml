@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Tinted at runtime from the theme's text color, so it works on light and dark themes. -->
+    <solid android:color="@android:color/white" />
+    <corners android:radius="12dp" />
+</shape>

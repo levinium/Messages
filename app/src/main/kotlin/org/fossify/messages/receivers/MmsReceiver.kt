@@ -27,7 +27,12 @@ import org.fossify.messages.models.Message
 
 class MmsReceiver : MmsReceivedReceiver() {
 
+    // mmslib asks about the sender and then the content of one message on the same receiver, so
+    // the content check can tell who sent it.
+    private var senderAddress: String? = null
+
     override fun isAddressBlocked(context: Context, address: String): Boolean {
+        senderAddress = address
         if (context.isNumberBlocked(address)) return true
         if (context.baseConfig.blockUnknownNumbers) {
             val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
@@ -39,7 +44,7 @@ class MmsReceiver : MmsReceivedReceiver() {
     }
 
     override fun isContentBlocked(context: Context, content: String): Boolean {
-        return isMessageFilteredOut(context, content)
+        return isMessageFilteredOut(context, content, senderAddress)
     }
 
     override fun onMessageReceived(context: Context, messageUri: Uri?) {

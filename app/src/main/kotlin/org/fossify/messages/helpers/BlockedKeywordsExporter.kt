@@ -1,12 +1,17 @@
 package org.fossify.messages.helpers
 
+import kotlinx.serialization.json.Json
 import org.fossify.commons.helpers.ExportResult
+import org.fossify.messages.models.BlockRule
+import org.fossify.messages.models.BlockRulesExport
 import java.io.OutputStream
 
 object BlockedKeywordsExporter {
 
-    fun exportBlockedKeywords(
-        blockedKeywords: ArrayList<String>,
+    private val json = Json { prettyPrint = true; encodeDefaults = true }
+
+    fun exportBlockRules(
+        rules: List<BlockRule>,
         outputStream: OutputStream?,
         callback: (result: ExportResult) -> Unit,
     ) {
@@ -17,9 +22,7 @@ object BlockedKeywordsExporter {
 
         try {
             outputStream.bufferedWriter().use { out ->
-                out.write(blockedKeywords.joinToString(BLOCKED_KEYWORDS_EXPORT_DELIMITER) {
-                    it
-                })
+                out.write(json.encodeToString(BlockRulesExport(rules = rules)))
             }
             callback.invoke(ExportResult.EXPORT_OK)
         } catch (e: Exception) {

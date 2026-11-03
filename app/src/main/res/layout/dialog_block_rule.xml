@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/block_rule_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:id="@+id/block_rule_holder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/activity_margin"
+        android:paddingTop="@dimen/activity_margin">
+
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/block_rule_intro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/block_rule_intro"
+            android:textSize="@dimen/normal_text_size" />
+
+        <LinearLayout
+            android:id="@+id/block_rule_conditions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/block_rule_needs_positive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:text="@string/block_rule_needs_positive"
+            android:textSize="@dimen/smaller_text_size"
+            android:visibility="gone" />
+
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/block_rule_add_condition"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:background="@drawable/ripple_all_corners"
+            android:drawablePadding="@dimen/small_margin"
+            android:gravity="center_vertical"
+            android:paddingVertical="@dimen/medium_margin"
+            android:paddingStart="0dp"
+            android:paddingEnd="@dimen/medium_margin"
+            android:text="@string/block_rule_add_condition"
+            android:textSize="@dimen/normal_text_size" />
+
+        <org.fossify.commons.views.MyAppCompatCheckbox
+            android:id="@+id/block_rule_match_case"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:text="@string/block_rule_match_case"
+            android:textSize="@dimen/normal_text_size" />
+
+        <org.fossify.commons.views.MyAppCompatCheckbox
+            android:id="@+id/block_rule_only_unknown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:text="@string/block_rule_only_unknown"
+            android:textSize="@dimen/normal_text_size" />
+
+        <View
+            android:id="@+id/block_rule_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="@dimen/medium_margin"
+            android:alpha="0.2" />
+
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/block_rule_test_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/block_rule_test_label"
+            android:textAllCaps="true"
+            android:textSize="@dimen/smaller_text_size" />
+
+        <org.fossify.commons.views.MyTextInputLayout
+            android:id="@+id/block_rule_test_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:hint="@string/block_rule_test_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/block_rule_test_edittext"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="5"
+                android:textCursorDrawable="@null"
+                android:textSize="@dimen/normal_text_size" />
+
+        </org.fossify.commons.views.MyTextInputLayout>
+
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/block_rule_test_result"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:drawablePadding="@dimen/small_margin"
+            android:gravity="center_vertical"
+            android:paddingBottom="@dimen/small_margin"
+            android:textSize="@dimen/normal_text_size"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>

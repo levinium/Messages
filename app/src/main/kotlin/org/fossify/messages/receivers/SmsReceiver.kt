@@ -45,7 +45,7 @@ class SmsReceiver : BroadcastReceiver() {
                 val status = parts.last().status
                 val body = buildString { parts.forEach { append(it.messageBody.orEmpty()) } }
 
-                if (isMessageFilteredOut(appContext, body)) return@ensureBackgroundThread
+                if (isMessageFilteredOut(appContext, body, address)) return@ensureBackgroundThread
                 if (appContext.isNumberBlocked(address)) return@ensureBackgroundThread
                 if (appContext.baseConfig.blockUnknownNumbers) {
                     val privateCursor =
