@@ -1,0 +1,110 @@
+name: Levinium release
+
+# Builds, signs and publishes LeviniumMessages-<version>.apk. Push a tag v<version>
+# matching LEVINIUM_VERSION_NAME in gradle.properties, or run it by hand, which tags
+# the checked-out commit. The release notes come from docs/release-notes/<version>.md.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: levinium-release
+  cancel-in-progress: false
+
+env:
+  # SHA-256 of "CN=Messages Personal Build, O=Self-signed, C=US". Every release has been
+  # signed with it, and an APK signed with anything else cannot update existing installs.
+  EXPECTED_CERT_SHA256: 0e8a12ecd6e1539711fed347e0f233237a1fa3eae6ae6f5abd35f2b31c2ad0c2
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          version="$(grep '^LEVINIUM_VERSION_NAME=' gradle.properties | cut -d= -f2- | tr -d '[:space:]')"
+          if [ -z "$version" ]; then
+            echo "::error::LEVINIUM_VERSION_NAME is missing from gradle.properties"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match LEVINIUM_VERSION_NAME $version"
+            exit 1
+          fi
+          notes="docs/release-notes/$version.md"
+          if [ ! -s "$notes" ]; then
+            echo "::error::$notes is missing or empty"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "notes=$notes" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
+            echo "::error::Secret SIGNING_KEYSTORE_BASE64 is not set"
+            exit 1
+          fi
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
+          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_ENV"
+
+      - name: Test and build
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew testFossDebugUnitTest assembleFossRelease
+
+      - name: Rename and check signer
+        id: apk
+        run: |
+          built="$(find app/build/outputs/apk/foss/release -name '*.apk')"
+          if [ "$(echo "$built" | grep -c .)" -ne 1 ]; then
+            echo "::error::Expected exactly one release APK, found: $built"
+            exit 1
+          fi
+          apk="LeviniumMessages-${{ steps.version.outputs.version }}.apk"
+          mv "$built" "$apk"
+
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          certs="$("$apksigner" verify --print-certs "$apk")"
+          echo "$certs"
+          actual="$(echo "$certs" | grep -i 'certificate SHA-256 digest' | awk '{print tolower($NF)}')"
+          if [ "$actual" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK is signed with '$actual', not the release certificate $EXPECTED_CERT_SHA256"
+            exit 1
+          fi
+          echo "path=$apk" >> "$GITHUB_OUTPUT"
+          ls -l "$apk"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" "${{ steps.apk.outputs.path }}" \
+            --title "Levinium Messages $VERSION" \
+            --notes-file "${{ steps.version.outputs.notes }}" \
+            --target "$GITHUB_SHA"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/keystore.jks"
